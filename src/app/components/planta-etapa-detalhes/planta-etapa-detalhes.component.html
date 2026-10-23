@@ -1,25 +1,24 @@
-<!-- Top Hero Header -->
-<header class="bg-agrotech-primary text-white py-4 shadow-sm mb-4">
-  <div class="container">
-    <div class="d-flex align-items-center gap-2 mb-1">
-      <span class="badge {{ etapaAtual.corBadge }} rounded-pill px-3 py-1 fw-bold">
-        Etapa {{ etapaAtual.numero }} de 8
-      </span>
-      <span class="text-white-50 small"><i class="fa-solid fa-leaf me-1"></i> Wiki de Cultivo AgroTech</span>
-    </div>
-    <h1 class="h3 mb-0 fw-bold">
-      <i class="fa-solid {{ etapaAtual.icone }} me-2"></i> {{ etapaAtual.titulo }}
-    </h1>
-    <p class="mb-0 text-white-50 small mt-1">
-      Planta: <strong>{{ planta?.apelidoLote }}</strong> | Espécie: <strong>{{ planta?.especieNomePopular }}</strong>
-      <span *ngIf="planta?.especieNomeCientifico" class="fst-italic">({{ planta?.especieNomeCientifico }})</span>
-    </p>
-  </div>
-</header>
-
 <div class="container pb-5" *ngIf="!isLoading && planta">
+  <!-- Cabeçalho da página (sem header duplicado) -->
+  <div class="page-header">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="badge {{ etapaAtual.corBadge }} rounded-pill px-3 py-1 fw-bold">
+          Etapa {{ etapaAtual.numero }} de 8
+        </span>
+        <span class="text-muted small"><i class="fa-solid fa-leaf me-1"></i> Wiki de Cultivo AgroTech</span>
+      </div>
+      <h1 class="page-titulo">
+        <i class="fa-solid {{ etapaAtual.icone }} text-agrotech-primary"></i> {{ etapaAtual.titulo }}
+      </h1>
+      <p class="page-subtitulo">
+        Planta: <strong>{{ planta?.apelidoLote }}</strong> · Espécie: <strong>{{ planta?.especieNomePopular }}</strong>
+        <span *ngIf="planta?.especieNomeCientifico" class="fst-italic">({{ planta?.especieNomeCientifico }})</span>
+      </p>
+    </div>
+  </div>
   <!-- Bloco de Ações Rápidas -->
-  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+  <div class="section-card compacto">
     <div class="d-flex justify-content-between align-items-center mobile-stack-header">
       <div>
         <h6 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-bolt text-warning me-2"></i>Ações Rápidas</h6>
@@ -113,7 +112,7 @@
   </div>
 
   <!-- Stepper de Navegação entre Etapas (1 a 8) -->
-  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+  <div class="section-card compacto">
     <div class="row g-2">
       <div class="col-6 col-md-4 col-lg-3" *ngFor="let stepNum of [1,2,3,4,5,6,7,8]">
         <button
@@ -137,7 +136,7 @@
     <!-- Coluna Principal (Instruções e Guia) -->
     <div class="col-lg-8">
       <!-- Card Resumo da Etapa -->
-      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+      <div class="section-card">
         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
           <h5 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
             <i class="fa-solid {{ etapaAtual.icone }} text-success fs-4 me-1"></i>
@@ -172,7 +171,7 @@
       <!-- BLOCO RESPONSIVO MÓVEL: Materiais & Parâmetros (Exibidos abaixo do Resumo em telas md e menores) -->
       <div class="d-block d-lg-none mb-4">
         <!-- Materiais Recomendados (Mobile) -->
-        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4" *ngIf="etapaAtual.materiaisRecomendados && etapaAtual.materiaisRecomendados.length > 0">
+        <div class="section-card" *ngIf="etapaAtual.materiaisRecomendados && etapaAtual.materiaisRecomendados.length > 0">
           <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
             <i class="fa-solid fa-screwdriver-wrench text-primary"></i> Materiais Recomendados
           </h6>
@@ -212,7 +211,7 @@
       </div>
 
       <!-- BLOCO: Passo a Passo (Ordem de Execução Numerada) -->
-      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4 border-start border-4 border-warning">
+      <div class="section-card borda-aviso">
         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
           <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
             <i class="fa-solid fa-list-ol text-warning fs-4"></i>
@@ -238,7 +237,7 @@
       </div>
 
       <!-- Dicas Agronômicas & Boas Práticas -->
-      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+      <div class="section-card">
         <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
           <i class="fa-solid fa-lightbulb text-warning"></i> Dicas Agronômicas de Sucesso
         </h5>
@@ -251,7 +250,7 @@
       </div>
 
       <!-- Erros Comuns a Evitar -->
-      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+      <div class="section-card">
         <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
           <i class="fa-solid fa-triangle-exclamation text-danger"></i> Erros Comuns a Evitar
         </h5>
@@ -264,7 +263,7 @@
       </div>
 
       <!-- BLOCO: DIÁRIO DE BORDO & REVISÃO DE SAÚDE DA IA (DIRETAMENTE ABAIXO DE ERROS COMUNS) -->
-      <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+      <div class="section-card">
         <!-- Header do Diário de Bordo -->
         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-wrap gap-2 mobile-stack-header">
           <div>

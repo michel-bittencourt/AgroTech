@@ -1,16 +1,3 @@
-<!-- Header -->
-<header class="bg-agrotech-primary text-white py-4 shadow-sm mb-4">
-  <div class="container d-flex justify-content-between align-items-center mobile-stack-header">
-    <div>
-      <h1 class="h3 mb-0 fw-bold"><i class="fa-solid fa-seedling me-2"></i> AgroTech — Cadastro de Cultivo</h1>
-      <p class="mb-0 text-white-50 small">Preenchimento assistido por IA botânica</p>
-    </div>
-    <button class="btn btn-outline-light rounded-pill px-4" (click)="voltar()">
-      <i class="fa-solid fa-arrow-left me-1"></i> Voltar
-    </button>
-  </div>
-</header>
-
 <!-- Input de arquivo oculto para o upload de imagem -->
 <input
   #fileInput
@@ -21,90 +8,191 @@
 />
 
 <div class="container pb-5">
-  <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
-    <!-- Bloco de Ações Rápidas -->
-    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom mobile-stack-header">
-      <div>
-        <h5 class="fw-bold mb-0 text-dark">Informações da Nova Planta</h5>
-        <span class="text-muted small">Pesquise a espécie para preencher os parâmetros automaticamente</span>
+  <!-- Cabeçalho da página (sem header duplicado) -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-seedling text-agrotech-primary"></i> Cadastro de Cultivo</h1>
+      <p class="page-subtitulo">Guia completo gerado por IA — da semente à colheita</p>
+    </div>
+    <div class="page-acoes">
+      <div class="stepper">
+        <div class="stepper-item" [class.ativo]="etapaAtual === 1" [class.concluido]="etapaAtual > 1">
+          <span class="stepper-circulo"><i *ngIf="etapaAtual > 1" class="fa-solid fa-check"></i><span *ngIf="etapaAtual === 1">1</span></span>
+          <span class="small fw-semibold">Buscar</span>
+        </div>
+        <span class="stepper-separador"></span>
+        <div class="stepper-item" [class.ativo]="etapaAtual === 2" [class.concluido]="etapaAtual > 2">
+          <span class="stepper-circulo"><i *ngIf="etapaAtual > 2" class="fa-solid fa-check"></i><span *ngIf="etapaAtual === 2">2</span></span>
+          <span class="small fw-semibold">Revisar guia</span>
+        </div>
+        <span class="stepper-separador"></span>
+        <div class="stepper-item" [class.ativo]="etapaAtual === 3">
+          <span class="stepper-circulo">3</span>
+          <span class="small fw-semibold">Cadastrar</span>
+        </div>
       </div>
-      <div class="d-flex gap-2 mobile-stack-actions">
-        <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="voltar()">Cancelar</button>
-        <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvar()" [disabled]="isSaving || isUploadingImagem">
-          <i [class]="isSaving ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-floppy-disk me-1'"></i> {{ isSaving ? 'Cadastrando...' : 'Cadastrar' }}
-        </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" (click)="voltar()">
+        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ SEÇÃO 1 — ESPÉCIE ═══════════ -->
+  <div class="section-card">
+    <div class="secao-titulo">
+      <span class="secao-numero">1</span>
+      <div>
+        <h2 class="secao-nome">Espécie</h2>
+        <span class="secao-descricao">Busque por IA nas fontes oficiais e identifique seu lote</span>
       </div>
     </div>
 
-    <!-- Buscador de Nome ou Espécie -->
-    <div class="mb-4">
-      <label class="form-label fw-bold text-dark">
-        <i class="fa-solid fa-magnifying-glass text-success me-1"></i> Nome ou Espécie
-      </label>
-      <div class="input-group input-group-lg shadow-sm rounded-3 mobile-stack-input-group">
-        <input
-          type="text"
-          class="form-control border-success"
-          placeholder="Digite o nome da planta (ex: Pimenta, Manjericão, Orquídea...)"
-          [(ngModel)]="termoBuscaEspecie"
-          (input)="onSearchChange()"
-          (keydown.enter)="buscarSugestoesIa(); $event.preventDefault()"
-          autocomplete="off"
-        />
-        <button
-          type="button"
-          class="btn btn-success px-4 d-flex align-items-center gap-2 fw-semibold"
-          (click)="buscarSugestoesIa()"
-          [disabled]="isBuscandoSugestoes || isLoadingScraping || !termoBuscaEspecie || !termoBuscaEspecie.trim()"
-        >
-          <i [class]="(isBuscandoSugestoes || isLoadingScraping) ? 'fa-solid fa-circle-notch spin-icon' : 'fa-solid fa-wand-magic-sparkles'"></i>
-          <span>{{ (isBuscandoSugestoes || isLoadingScraping) ? 'Buscando...' : 'Buscar' }}</span>
-        </button>
-      </div>
+    <div class="input-group input-group-lg rounded-3 mobile-stack-input-group mb-1">
+      <input
+        type="text"
+        class="form-control border-success"
+        placeholder="Digite qualquer nome (ex: Pimenta, Manjericão, Orquídea...)"
+        [(ngModel)]="termoBuscaEspecie"
+        (input)="onSearchChange()"
+        (keydown.enter)="buscarSugestoesIa(); $event.preventDefault()"
+        autocomplete="off"
+      />
+      <button
+        type="button"
+        class="btn px-4 d-flex align-items-center gap-2 fw-semibold"
+        [class.btn-success]="!isBuscaDemorando"
+        [class.btn-outline-warning]="isBuscaDemorando"
+        (click)="buscarSugestoesIa()"
+        [disabled]="isLoadingScraping || !termoBuscaEspecie || !termoBuscaEspecie.trim() || (isBuscandoSugestoes && !isBuscaDemorando)"
+      >
+        <i [class]="isBuscandoSugestoes && !isBuscaDemorando ? 'fa-solid fa-circle-notch spin-icon' : (isBuscaDemorando ? 'fa-solid fa-rotate-right' : 'fa-solid fa-wand-magic-sparkles')"></i>
+        <span>{{ isBuscaDemorando ? 'Tentar Novamente' : (isBuscandoSugestoes ? 'Buscando...' : 'Buscar') }}</span>
+      </button>
+    </div>
 
-      <!-- Aviso de Demora na Busca de Sugestões -->
-      <div *ngIf="mensagemDemoraSugestoes" class="alert alert-info py-2 px-3 mt-2 rounded-3 small border-info-subtle shadow-sm d-flex align-items-center gap-2">
-        <i class="fa-solid fa-hourglass-start text-info"></i>
-        <span>{{ mensagemDemoraSugestoes }}</span>
-      </div>
+    <div class="form-text text-muted mt-1 small" *ngIf="isBuscaDemorando && isBuscandoSugestoes">
+      <i class="fa-solid fa-clock text-secondary me-1"></i>
+      Buscando há <strong>{{ buscaDecorridaSegundos }}s</strong>. A IA pode estar instável — clique em <strong>Tentar Novamente</strong> para cancelar e rebuscar.
+    </div>
 
-      <!-- Select de Sugestões Botânicas / IA -->
-      <div class="mt-3 p-3 bg-light border border-success-subtle rounded-3 shadow-sm" *ngIf="showSelectSugestoes && todasSugestoes.length > 0">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <label class="form-label fw-bold text-success mb-0">
-            <i class="fa-solid fa-wand-magic-sparkles me-1 text-warning"></i> Sugestões da IA para "{{ termoBuscaEspecie }}":
-          </label>
-          <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill small">
-            IA Botânica AgroTech
+    <!-- Personalização (colapsada por padrão) -->
+    <details class="colapsador mt-3" [open]="contexto.regiaoUf || contexto.localPlantio || contexto.tamanhoRecipiente ? true : null">
+      <summary>Personalize seu cultivo <span class="text-muted fw-normal small">(opcional — a IA adapta calendário, doses e avisos à sua realidade)</span></summary>
+      <div class="conteudo-colapsado">
+        <div class="row g-2">
+          <div class="col-6 col-md-3">
+            <label class="form-label small fw-bold text-secondary mb-1">Seu estado (UF)</label>
+            <select class="form-select form-select-sm" [(ngModel)]="contexto.regiaoUf" name="ctxUf">
+              <option [ngValue]="undefined">Não informar</option>
+              <option *ngFor="let uf of ufsBrasil" [value]="uf">{{ uf }}</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small fw-bold text-secondary mb-1">Mês do plantio</label>
+            <select class="form-select form-select-sm" [(ngModel)]="contexto.mesPlantio" name="ctxMes">
+              <option [ngValue]="undefined">Não informar</option>
+              <option *ngFor="let mes of mesesPlantio; let i = index" [value]="i + 1">{{ mes }}</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small fw-bold text-secondary mb-1">Onde vai plantar</label>
+            <select class="form-select form-select-sm" [(ngModel)]="contexto.localPlantio" name="ctxLocal">
+              <option [ngValue]="undefined">Não informar</option>
+              <option *ngFor="let local of locaisPlantio" [value]="local">{{ local }}</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="form-label small fw-bold text-secondary mb-1">Espaço / recipiente</label>
+            <select class="form-select form-select-sm" [(ngModel)]="contexto.tamanhoRecipiente" name="ctxTamanho">
+              <option [ngValue]="undefined">Não informar</option>
+              <option *ngFor="let tamanho of tamanhosRecipiente" [value]="tamanho">{{ tamanho }}</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-12">
+            <label class="form-label small fw-bold text-secondary mb-1">A planta fica em área coberta?</label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" id="cobertaSim" [ngModel]="contexto.areaCoberta" [value]="true" (change)="contexto.areaCoberta = true" name="ctxCoberta" />
+                <label class="form-check-label small" for="cobertaSim">Sim — coberta (varanda, estufa, dentro de casa)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" id="cobertaNao" [ngModel]="contexto.areaCoberta" [value]="false" (change)="contexto.areaCoberta = false" name="ctxCoberta" />
+                <label class="form-check-label small" for="cobertaNao">Não — área exposta (céu aberto)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" id="cobertaNa" [ngModel]="contexto.areaCoberta" [value]="null" (change)="contexto.areaCoberta = undefined" name="ctxCoberta" checked />
+                <label class="form-check-label small text-muted" for="cobertaNa">Não informar</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Cache condicional: espécie já possui guia salvo -->
+    <div *ngIf="sugestaoComCache" class="mt-3 p-3 bg-light border border-success rounded-3 shadow-sm">
+      <div class="d-flex align-items-start gap-3 flex-wrap">
+        <i class="fa-solid fa-book-bookmark text-success fs-3"></i>
+        <div class="flex-grow-1">
+          <strong class="d-block text-dark">✓ Guia completo já salvo para "{{ sugestaoComCache.sugestao.nomePopular }}"</strong>
+          <span class="small text-muted">
+            Esta espécie já foi coletada das fontes oficiais e o guia está no catálogo
+            <span *ngIf="sugestaoComCache.especie.criadoEm">(coletado em {{ sugestaoComCache.especie.criadoEm | date:'dd/MM/yyyy' }})</span>.
+            Usar o guia salvo é instantâneo — buscar novamente pode trazer dados mais atuais.
           </span>
         </div>
-
-        <!-- Dropdown Select -->
-        <select
-          class="form-select form-select-lg border-success fw-medium text-dark"
-          [(ngModel)]="sugestaoSelecionada"
-          (change)="onSelectSugestaoChange()"
-        >
-          <option [ngValue]="null" disabled selected>-- Escolha uma planta da lista --</option>
-          <option *ngFor="let s of todasSugestoes" [ngValue]="s">
-            🌱 {{ s.nomePopular }} ({{ s.nomeCientifico }})
-          </option>
-        </select>
-
-        <div class="form-text text-muted mt-2">
-          <i class="fa-solid fa-circle-info text-success me-1"></i>
-          Clique na espécie desejada acima ou selecione no menu para preencher automaticamente as recomendações de cultivo.
+        <div class="d-flex gap-2 mobile-stack-actions">
+          <button type="button" class="btn btn-success px-4 rounded-pill fw-semibold" (click)="usarGuiaSalvo()">
+            <i class="fa-solid fa-bolt me-1"></i> Usar guia salvo
+          </button>
+          <button type="button" class="btn btn-outline-secondary px-3 rounded-pill fw-semibold" (click)="descartarGuiaSalvoEBuscar()">
+            <i class="fa-solid fa-rotate-right me-1"></i> Buscar novamente
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Card de Erro de Conexão com IA na Busca de Sugestões -->
-    <div *ngIf="erroConexaoIa" class="alert alert-warning border-warning-subtle shadow-sm rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <!-- Aviso de Demora na Busca de Sugestões -->
+    <div *ngIf="mensagemDemoraSugestoes" class="alert alert-info py-2 px-3 mt-2 rounded-3 small border-info-subtle shadow-sm d-flex align-items-center gap-2">
+      <i class="fa-solid fa-hourglass-start text-info"></i>
+      <span>{{ mensagemDemoraSugestoes }}</span>
+    </div>
+
+    <!-- Sugestões da IA -->
+    <div class="mt-3 p-3 bg-light border border-success-subtle rounded-3 shadow-sm" *ngIf="showSelectSugestoes && todasSugestoes.length > 0">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <label class="form-label fw-bold text-success mb-0">
+          <i class="fa-solid fa-wand-magic-sparkles me-1 text-warning"></i> Sugestões da IA para "{{ termoBuscaEspecie }}":
+        </label>
+        <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill small">
+          IA Botânica AgroTech
+        </span>
+      </div>
+
+      <select
+        class="form-select form-select-lg border-success fw-medium text-dark"
+        [(ngModel)]="sugestaoSelecionada"
+        (change)="onSelectSugestaoChange()"
+      >
+        <option [ngValue]="null" disabled selected>-- Escolha uma planta da lista --</option>
+        <option *ngFor="let s of todasSugestoes" [ngValue]="s">
+          🌱 {{ s.nomePopular }} ({{ s.nomeCientifico }})
+        </option>
+      </select>
+
+      <div class="form-text text-muted mt-2">
+        <i class="fa-solid fa-circle-info text-success me-1"></i>
+        Ao escolher, o sistema coleta dados em fontes oficiais e preenche o guia automaticamente.
+      </div>
+    </div>
+
+    <!-- Erro de conexão com IA na busca de sugestões -->
+    <div *ngIf="erroConexaoIa" class="alert alert-warning border-warning-subtle shadow-sm rounded-3 p-3 mt-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
       <div class="d-flex align-items-center gap-3">
         <i class="fa-solid fa-triangle-exclamation text-warning fs-3"></i>
         <div>
           <strong class="d-block text-dark fs-6">Não foi possível se conectar e obter resposta da IA</strong>
-          <span class="small text-muted">Não conseguimos se conectar com os servidores de IA. Deseja cadastrar a planta manualmente?</span>
+          <span class="small text-muted">Deseja cadastrar a planta manualmente?</span>
         </div>
       </div>
       <div class="d-flex gap-2 mobile-stack-actions">
@@ -117,12 +205,12 @@
       </div>
     </div>
 
-    <!-- Card de Erro com Botão Tentar Novamente / Cadastrar Manualmente -->
-    <div *ngIf="erroScrapingMensagem && !isLoadingScraping" class="alert alert-warning border-warning-subtle shadow-sm rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+    <!-- Erro na coleta profunda (scraping) -->
+    <div *ngIf="erroScrapingMensagem && !isLoadingScraping" class="alert alert-warning border-warning-subtle shadow-sm rounded-3 p-3 mt-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
       <div class="d-flex align-items-center gap-3">
         <i class="fa-solid fa-triangle-exclamation text-warning fs-3"></i>
         <div>
-          <strong class="d-block text-dark fs-6">Não foi possível se conectar e obter resposta da IA</strong>
+          <strong class="d-block text-dark fs-6">Não foi possível concluir a coleta de dados</strong>
           <span class="small text-muted">{{ erroScrapingMensagem }} Deseja cadastrar as informações manualmente?</span>
         </div>
       </div>
@@ -136,289 +224,258 @@
       </div>
     </div>
 
-    <!-- Overlay Animado de Coleta de Dados Botânicos & IA -->
-    <div *ngIf="isLoadingScraping" class="p-4 mb-4 border border-success-subtle rounded-4 shadow text-center position-relative overflow-hidden" style="background: linear-gradient(135deg, #f4fbf7 0%, #e6f6ec 100%);">
-      
-      <!-- Icone / Logo Animado -->
-      <div class="mb-3 d-inline-block position-relative">
-        <div class="spinner-grow text-success" style="width: 3.8rem; height: 3.8rem; animation-duration: 1.2s;" role="status">
-          <span class="visually-hidden">Carregando...</span>
+    <!-- Overlay de coleta (compacto) -->
+    <div *ngIf="isLoadingScraping" class="p-3 mt-3 border border-success-subtle rounded-3 shadow-sm bg-light">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3 flex-grow-1">
+          <i class="fa-solid fa-seedling fa-bounce text-success fs-3"></i>
+          <div class="flex-grow-1">
+            <div class="fw-semibold text-success small">{{ mensagemProgresso }}</div>
+            <div class="d-flex gap-2 flex-wrap mt-1" *ngIf="progressoEtapa">
+              <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill small">
+                <i class="fa-solid fa-layer-group me-1"></i> {{ progressoEtapa }}
+              </span>
+              <span *ngIf="progressoFontes" class="badge bg-info-subtle text-info border border-info px-2 py-1 rounded-pill small">
+                <i class="fa-solid fa-database me-1"></i> {{ progressoFontes }}
+              </span>
+            </div>
+          </div>
         </div>
-        <div class="position-absolute top-50 start-50 translate-middle text-success fs-3">
-          <i class="fa-solid fa-seedling fa-bounce"></i>
+        <div class="text-secondary small text-nowrap">
+          <i class="fa-solid fa-stopwatch me-1 text-success"></i> {{ tempoDecorridoDisplay }} <span class="text-muted">/ ~{{ tempoEstimadoDisplay }}</span>
         </div>
       </div>
-
-      <!-- Titulo e Mensagem de Etapa -->
-      <h5 class="fw-bold text-success mb-1 d-flex align-items-center justify-content-center gap-2">
-        <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i>
-        <span>{{ mensagemProgresso }}</span>
-      </h5>
-
-      <!-- Etapa atual e contador de fontes (progresso real do backend) -->
-      <div class="d-flex justify-content-center gap-3 flex-wrap mb-2" *ngIf="progressoEtapa">
-        <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill small">
-          <i class="fa-solid fa-layer-group me-1"></i> {{ progressoEtapa }}
-        </span>
-        <span *ngIf="progressoFontes" class="badge bg-info-subtle text-info border border-info px-3 py-2 rounded-pill small">
-          <i class="fa-solid fa-database me-1"></i> {{ progressoFontes }}
-        </span>
-      </div>
-
-      <p class="text-muted small mb-3">
-        Coleta profunda em 3 etapas: scraping HTML nos sites &rarr; comparação com APIs científicas (JBRJ + GBIF + WFO + iNaturalist + EOL + Wikidata) &rarr; organização e sanitização final com IA Agronômica.
-      </p>
-
-      <!-- Barra de Progresso Animada -->
-      <div class="progress shadow-sm rounded-pill mb-3" style="height: 12px; background-color: #cdecd8;">
-        <div 
-          class="progress-bar bg-success progress-bar-striped progress-bar-animated rounded-pill transition-all" 
-          role="progressbar" 
+      <div class="progress shadow-sm rounded-pill mt-2" style="height: 8px; background-color: #cdecd8;">
+        <div
+          class="progress-bar bg-success progress-bar-striped progress-bar-animated rounded-pill transition-all"
+          role="progressbar"
           [style.width.%]="progressoPercentual"
         ></div>
       </div>
+    </div>
 
-      <!-- Temporizador / Cronometro -->
-      <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-white bg-opacity-75 rounded-3 border border-success-subtle text-secondary small">
-        <span><i class="fa-solid fa-stopwatch me-1 text-success"></i> Tempo decorrido: <strong class="text-dark">{{ tempoDecorridoDisplay }}</strong></span>
-        <span><i class="fa-solid fa-hourglass-half me-1 text-success"></i> Estimado: <strong class="text-dark">{{ tempoEstimadoDisplay }}</strong></span>
+    <!-- Relatório de Conexão das Fontes (durante e após a coleta) -->
+    <div class="mt-3" *ngIf="relatorioFontes.length > 0">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <label class="form-label fw-bold text-dark mb-0 small">
+          <i class="fa-solid fa-satellite-dish text-primary me-1"></i> Relatório de Conexão das Fontes
+          <span *ngIf="isLoadingScraping" class="badge bg-info-subtle text-info border border-info ms-2 px-2 py-1 rounded-pill small">
+            <i class="fa-solid fa-circle-notch spin-icon me-1"></i> Coletando...
+          </span>
+          <span *ngIf="!isLoadingScraping && relatorioFontes.length" class="badge bg-success-subtle text-success border border-success ms-2 px-2 py-1 rounded-pill small">
+            {{ relatorioFontes.filter(f => f.sucesso).length }}/{{ relatorioFontes.length }} conectadas
+          </span>
+        </label>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0 bg-white border rounded-3 overflow-hidden shadow-sm">
+          <thead class="table-light">
+            <tr class="small">
+              <th style="width: 36px;"></th>
+              <th>Fonte</th>
+              <th class="d-none d-md-table-cell">Tipo</th>
+              <th>Resultado</th>
+              <th class="text-end" style="width: 70px;">Tempo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let f of relatorioFontes">
+              <td><i [class]="f.sucesso ? 'fa-solid fa-circle-check text-success' : 'fa-solid fa-circle-xmark text-danger'"></i></td>
+              <td class="small fw-semibold text-dark">{{ f.nome }}</td>
+              <td class="d-none d-md-table-cell"><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-0 rounded-pill" style="font-size: 10px;">{{ f.tipo }}</span></td>
+              <td class="small text-muted">{{ f.detalhe }}</td>
+              <td class="small text-muted text-end">{{ (f.duracaoMs / 1000).toFixed(1) }}s</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- Form Data -->
-    <div class="row g-3">
-      <!-- Apelido do Lote -->
-      <div class="col-md-12 mb-2">
-        <label class="form-label fw-bold">Apelido / Identificador do Lote</label>
+    <hr class="my-4" />
+
+    <!-- Identificação do lote -->
+    <div class="d-flex align-items-start gap-3 flex-wrap">
+      <!-- Avatar / Foto -->
+      <div class="position-relative">
+        <img *ngIf="imagemExibicaoUrl" [src]="imagemExibicaoUrl" alt="Foto da espécie" class="avatar-especie shadow-sm border" />
+        <div *ngIf="!imagemExibicaoUrl" class="avatar-especie d-flex align-items-center justify-content-center bg-light rounded-3 border border-dashed text-muted">
+          <i class="fa-solid fa-image fa-xl opacity-50"></i>
+        </div>
+        <button
+          type="button"
+          class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle p-1"
+          style="width: 22px; height: 22px; font-size: 10px; transform: translate(25%, -25%);"
+          *ngIf="imagemExibicaoUrl"
+          (click)="removerImagem()"
+          title="Remover imagem"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="flex-grow-1" style="min-width: 240px;">
+        <label class="form-label small fw-bold text-secondary mb-1">Apelido / Identificador do Lote</label>
         <input type="text" class="form-control form-control-lg rounded-3" [(ngModel)]="formData.apelidoLote" placeholder="Ex: Mudas de Manjericão - Vaso 01" required />
+
+        <button type="button" class="btn btn-outline-primary btn-sm px-3 rounded-pill mt-2" (click)="abrirSeletorImagem()" [disabled]="isUploadingImagem">
+          <i [class]="isUploadingImagem ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-upload me-1'"></i>
+          {{ isUploadingImagem ? 'Enviando...' : (imagemExibicaoUrl ? 'Trocar foto' : 'Carregar foto (opcional)') }}
+        </button>
+        <span *ngIf="imagemExibicaoUrl" class="text-success small ms-2"><i class="fa-solid fa-circle-check me-1"></i>Imagem selecionada</span>
+        <div class="text-muted mt-1" style="font-size: 11px;">JPG, PNG, WebP · Máx. 5 MB</div>
       </div>
+    </div>
+  </div>
 
-      <!-- Parâmetros de Cultivo -->
-      <div class="col-12">
-        <div class="card bg-light border-0 p-3 rounded-3">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h6 class="fw-bold text-success mb-0"><i class="fa-solid fa-sliders me-1"></i> Parâmetros Ideais de Cultivo (Preenchidos Automática / Editáveis)</h6>
-
-            <!-- Selo de Origem dos Dados / IA -->
-            <span *ngIf="formData.fonteDadosScraping"
-                  [ngStyle]="formData.isGeradoPorIa ? {'background-color': '#ede9fe', 'color': '#5b21b6', 'border': '1px solid #8b5cf6', 'font-weight': '700'} : {}"
-                  [class]="formData.isGeradoPorIa ? 'badge badge-responsive-text px-3 py-2 rounded-pill shadow-sm' : 'badge badge-responsive-text bg-success-subtle text-success border border-success px-3 py-2 rounded-pill shadow-sm'">
-              <i [class]="formData.isGeradoPorIa ? 'fa-solid fa-wand-magic-sparkles me-1' : 'fa-solid fa-globe me-1 text-success'" [style.color]="formData.isGeradoPorIa ? '#5b21b6' : ''"></i>
-              {{ formData.isGeradoPorIa ? '✨ Obtido via IA (Gemini Pro)' : '🌐 Origem: Base Científica Oficial (GBIF / Flora do Brasil)' }}
-            </span>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label small fw-bold text-secondary">Nome Popular</label>
-              <input type="text" class="form-control" [(ngModel)]="formData.nomePopular" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold text-secondary">Nome Científico</label>
-              <input type="text" class="form-control" [(ngModel)]="formData.nomeCientifico" />
-            </div>
-
-            <div class="col-6 col-md-3">
-              <label class="form-label small fw-bold text-secondary d-flex align-items-center justify-content-between">
-                <span>Umidade Solo Mín (%)</span>
-                <span *ngIf="isCampo100PercentIa('umidadeSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                <span *ngIf="isCampoBaseOficial('umidadeSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-              </label>
-              <input type="number" class="form-control" [(ngModel)]="formData.umidadeSoloMin" min="0" max="100" />
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label small fw-bold text-secondary d-flex align-items-center justify-content-between">
-                <span>Umidade Solo Máx (%)</span>
-                <span *ngIf="isCampo100PercentIa('umidadeSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                <span *ngIf="isCampoBaseOficial('umidadeSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-              </label>
-              <input type="number" class="form-control" [(ngModel)]="formData.umidadeSoloMax" min="0" max="100" />
-            </div>
-
-            <div class="col-6 col-md-3">
-              <label class="form-label small fw-bold text-secondary d-flex align-items-center justify-content-between">
-                <span>Temp. Mín (°C)</span>
-                <span *ngIf="isCampo100PercentIa('temperatura')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                <span *ngIf="isCampoBaseOficial('temperatura')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-              </label>
-              <input type="number" class="form-control" [(ngModel)]="formData.temperaturaMin" />
-            </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label small fw-bold text-secondary d-flex align-items-center justify-content-between">
-                <span>Temp. Máx (°C)</span>
-                <span *ngIf="isCampo100PercentIa('temperatura')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                <span *ngIf="isCampoBaseOficial('temperatura')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-              </label>
-              <input type="number" class="form-control" [(ngModel)]="formData.temperaturaMax" />
-            </div>
-
-            <div class="col-12">
-              <label class="form-label small fw-bold text-secondary d-flex align-items-center justify-content-between">
-                <span>Instruções e Recomendações de Manejo (Visão Geral da Jornada Completa)</span>
-                <span *ngIf="isCampo100PercentIa('instrucoesManejo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                <span *ngIf="isCampoBaseOficial('instrucoesManejo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-              </label>
-              <textarea class="form-control" rows="3" [(ngModel)]="formData.instrucoesManejo"></textarea>
-            </div>
-
-            <!-- Guia de Cultivo Passo a Passo (Da Semente na Loja até a Colheita & Manutenção) -->
-            <div class="col-12 mt-4">
-              <div class="p-3 bg-white border rounded-3 shadow-sm">
-                <h6 class="fw-bold text-success mb-1 d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-list-check"></i>
-                  <span>Guia Técnico de Cultivo — Da Escolha da Semente na Loja até a Colheita & Manutenção</span>
-                </h6>
-                <p class="text-muted small mb-3">
-                  Passo a passo completo gerado pela IA e editável: cada etapa traz materiais (ideal e caseiro), modo de fazer com medidas, quando fazer, erros comuns e os sinais de que deu certo.
-                </p>
-                <div>
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>🛒 Passo 1: Na Loja — Escolha da Semente & Primeiros Cuidados</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo1PreparoSemente')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo1PreparoSemente')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo1PreparoSemente" placeholder="🛒 Materiais & onde comprar (ideal vs. caseiro, preço de referência, selo MAPA, validade)... 🧑‍🌾 Modo de fazer numerado... 📅 Quando fazer... ⚠️ Erros comuns... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>🪴 Passo 2: Preparo do Substrato & Sementeira (Receita de Bolo)</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo2PreparoSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo2PreparoSolo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo2PreparoSolo" placeholder="🛒 Materiais com medidas exatas (copos de requeijão, gramas, litros)... 🧑‍🌾 Receita passo a passo... 📅 Quando fazer... ⚠️ Erros comuns... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>💧 Passo 3: Semeadura & Germinação (Dia a Dia do Broto)</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo3SemeaduraGerminacao')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo3SemeaduraGerminacao')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo3SemeaduraGerminacao" placeholder="🧑‍🌾 Profundidade exata (cm), sementes por célula, rega com borrifador... 📅 Dias até germinar e o que checar a cada dia... ⚠️ Erros comuns... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>🌿 Passo 4: Endurecimento, Transplante & Local Definitivo</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo6TransplanteMudas') || isCampo100PercentIa('passo4CuidadosBrotoDesbaste')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo6TransplanteMudas') && isCampoBaseOficial('passo4CuidadosBrotoDesbaste')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo4TransplanteMudas" placeholder="🧑‍🌾 Quando transplantar (folhas verdadeiras + altura em cm), cronograma de sol, técnica da colher para raízes... 🪴 Vaso/litros, espaçamento em cm, receita do solo definitivo... ⚠️ Erros comuns... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>☀️ Passo 5: Crescimento — Rega, Podas, Nutrição & Defesa contra Pragas</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo7NutricaoPoda') || isCampo100PercentIa('passo5AclimatizacaoVasoDefinitivo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo7NutricaoPoda') && isCampoBaseOficial('passo5AclimatizacaoVasoDefinitivo')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo5CrescimentoManejo" placeholder="🧑‍🌾 Rega (volume/frequência), poda apical, tutor... 🧪 Cronograma de adubação com doses caseiras (borra de café, casca de banana)... 🐛 Pragas comuns da espécie + receitas de defesa (sabão neutro, óleo de neem)... ⚠️ Erros comuns... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 mb-3 bg-light">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span>🌸 Passo 6: Floração, Colheita & Manutenção da Produção</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('passo8FloracaoColheita')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('passo8FloracaoColheita')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.passo6FloracaoColheita" placeholder="🌸 Como estimular floração e polinizar (se precisar)... 🧺 Sinais exatos do ponto de colheita (cor, tamanho, dias), como colher e armazenar... 🔁 Como manter produzindo (poda pós-colheita, adubação de recuperação, quando replantar)... ✅ Sinais de que deu certo..."></textarea>
-                  </div>
-
-                  <div class="border rounded-3 p-3 bg-light border-success-subtle">
-                    <label class="form-label small fw-bold text-success d-flex align-items-center justify-content-between flex-wrap gap-1">
-                      <span><i class="fa-solid fa-sun text-warning me-1"></i> Rotina Diária & Diagnóstico Rápido de Problemas</span>
-                      <span class="d-flex gap-1">
-                        <span *ngIf="isCampo100PercentIa('cuidadosDiaADia')" class="badge ms-1 px-2 py-1 rounded-pill" title="Campo 100% gerado pela IA (Gemini Pro)" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
-                        <span *ngIf="isCampoBaseOficial('cuidadosDiaADia')" class="badge ms-1 px-2 py-1 rounded-pill" title="Informação refinada a partir de Portais Científicos Oficiais (JBRJ/GBIF/Embrapa)" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
-                      </span>
-                    </label>
-                    <textarea class="form-control form-control-sm" rows="9" [(ngModel)]="formData.cuidadosDiaADia" placeholder="📋 Checklist diário (manhã/tarde, 2-3 min)... 📅 Checklist semanal e mensal... 🔍 Diagnóstico rápido: folha amarela = ?, pontas secas = ?, manchas = ?, mofo = ? + ação imediata de cada sintoma..."></textarea>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Upload de Imagem (Manual) -->
-      <div class="col-12">
-        <div class="card bg-light border-0 p-3 rounded-3">
-          <h6 class="fw-bold text-dark mb-3">
-            <i class="fa-solid fa-image text-primary me-1"></i> Foto da Espécie
-            <span class="text-muted fw-normal small ms-2">(opcional — apenas upload manual)</span>
-          </h6>
-
-          <div class="d-flex align-items-start gap-4 flex-wrap">
-            <!-- Preview da Imagem -->
-            <div *ngIf="imagemExibicaoUrl" class="position-relative">
-              <img
-                [src]="imagemExibicaoUrl"
-                alt="Preview da espécie"
-                class="rounded-3 shadow-sm border"
-                style="width: 120px; height: 120px; object-fit: cover;"
-              />
-              <button
-                type="button"
-                class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle p-1"
-                style="width: 24px; height: 24px; font-size: 10px; transform: translate(30%, -30%);"
-                (click)="removerImagem()"
-                title="Remover imagem"
-              >
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-
-            <!-- Ícone Placeholder quando sem imagem -->
-            <div *ngIf="!imagemExibicaoUrl" class="d-flex align-items-center justify-content-center bg-white rounded-3 border border-dashed shadow-sm"
-                 style="width: 120px; height: 120px; border-style: dashed !important; border-color: #dee2e6 !important;">
-              <div class="text-center text-muted">
-                <i class="fa-solid fa-image fa-2x mb-1 d-block text-secondary opacity-50"></i>
-                <span class="small" style="font-size: 10px;">Sem foto</span>
-              </div>
-            </div>
-
-            <!-- Botões de ação de upload -->
-            <div class="d-flex flex-column gap-2 justify-content-center">
-              <button
-                type="button"
-                class="btn btn-outline-primary px-3 rounded-pill"
-                (click)="abrirSeletorImagem()"
-                [disabled]="isUploadingImagem"
-              >
-                <i [class]="isUploadingImagem ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-upload me-1'"></i>
-                {{ isUploadingImagem ? 'Enviando...' : (imagemExibicaoUrl ? 'Trocar Foto' : 'Carregar Foto') }}
-              </button>
-              <span *ngIf="imagemExibicaoUrl" class="text-success small">
-                <i class="fa-solid fa-circle-check me-1"></i>Imagem selecionada
-              </span>
-              <span class="text-muted" style="font-size: 11px;">JPG, PNG, WebP · Máx. 5 MB</span>
-            </div>
-          </div>
-        </div>
+  <!-- ═══════════ SEÇÃO 2 — CONDIÇÕES IDEAIS ═══════════ -->
+  <div class="section-card">
+    <div class="secao-titulo">
+      <span class="secao-numero">2</span>
+      <div>
+        <h2 class="secao-nome">Condições ideais</h2>
+        <span class="secao-descricao">Parâmetros de cultivo preenchidos pela IA — revise antes de salvar</span>
       </div>
     </div>
 
-    <!-- Botões Inferiores -->
-    <div class="d-flex justify-content-end gap-2 pt-3 border-top mt-4 mb-3 mobile-stack-actions">
-      <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="voltar()">Cancelar</button>
-      <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvar()" [disabled]="isSaving || isUploadingImagem">
-        <i [class]="isSaving ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-floppy-disk me-1'"></i> {{ isSaving ? 'Cadastrando...' : 'Cadastrar' }}
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <span class="text-muted small">Identificação científica da espécie</span>
+      <span *ngIf="formData.fonteDadosScraping"
+            [ngStyle]="formData.isGeradoPorIa ? {'background-color': '#ede9fe', 'color': '#5b21b6', 'border': '1px solid #8b5cf6', 'font-weight': '700'} : {}"
+            [class]="formData.isGeradoPorIa ? 'badge px-3 py-2 rounded-pill shadow-sm' : 'badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill shadow-sm'">
+        <i [class]="formData.isGeradoPorIa ? 'fa-solid fa-wand-magic-sparkles me-1' : 'fa-solid fa-globe me-1 text-success'"></i>
+        {{ formData.isGeradoPorIa ? 'Obtido via IA (Gemini)' : 'Origem: Base Científica Oficial (GBIF / Flora do Brasil)' }}
+      </span>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label small fw-bold text-secondary">Nome Popular</label>
+        <input type="text" class="form-control" [(ngModel)]="formData.nomePopular" required />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-bold text-secondary">Nome Científico</label>
+        <input type="text" class="form-control fst-italic" [(ngModel)]="formData.nomeCientifico" />
+      </div>
+    </div>
+
+    <!-- Ajustes avançados (faixas min/max) — fechado por padrão -->
+    <div class="acordeao mt-4" [class.aberto]="ajustesAvancadosAbertos()">
+      <button type="button"
+              class="acordion-cabecalho"
+              (click)="alternarAjustesAvancados()"
+              [attr.aria-expanded]="ajustesAvancadosAbertos()"
+              aria-controls="ajustes-avancados-conteudo">
+        <i class="fa-solid fa-sliders text-agrotech-primary"></i>
+        <span>Ajustes avançados</span>
+        <span class="text-muted fw-normal small">(faixas ideais de umidade, temperatura e luz — preenchidas pela IA)</span>
+        <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
       </button>
+
+      @if (ajustesAvancadosAbertos()) {
+        <div class="acordeao-corpo" id="ajustes-avancados-conteudo">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-secondary">Umidade do Solo (%)</label>
+              <div class="input-group">
+                <input type="number" class="form-control" [(ngModel)]="formData.umidadeSoloMin" min="0" max="100" placeholder="mín" />
+                <span class="input-group-text">até</span>
+                <input type="number" class="form-control" [(ngModel)]="formData.umidadeSoloMax" min="0" max="100" placeholder="máx" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-secondary">Temperatura (°C)</label>
+              <div class="input-group">
+                <input type="number" class="form-control" [(ngModel)]="formData.temperaturaMin" placeholder="mín" />
+                <span class="input-group-text">até</span>
+                <input type="number" class="form-control" [(ngModel)]="formData.temperaturaMax" placeholder="máx" />
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-secondary">
+                Luminosidade (lux) <span class="text-muted fw-normal">(opcional)</span>
+              </label>
+              <div class="input-group">
+                <input type="number" class="form-control" [class.is-invalid]="luminosidadeRangeInvalida" [(ngModel)]="formData.luminosidadeMin" min="0" placeholder="mín" />
+                <span class="input-group-text">até</span>
+                <input type="number" class="form-control" [class.is-invalid]="luminosidadeRangeInvalida" [(ngModel)]="formData.luminosidadeMax" min="0" placeholder="máx" />
+              </div>
+              @if (luminosidadeRangeInvalida) {
+                <div class="small text-danger mt-1">Mínimo deve ser menor ou igual ao máximo</div>
+              }
+            </div>
+          </div>
+        </div>
+      }
     </div>
+  </div>
+
+  <!-- ═══════════ SEÇÃO 3 — MANEJO ═══════════ -->
+  <div class="section-card">
+    <div class="secao-titulo">
+      <span class="secao-numero">3</span>
+      <div>
+        <h2 class="secao-nome">Manejo</h2>
+        <span class="secao-descricao">Guia passo a passo gerado pela IA — revise e ajuste conforme sua realidade</span>
+      </div>
+    </div>
+
+    <div class="col-12 mb-3">
+      <label class="form-label small fw-bold text-secondary">Instruções e Recomendações de Manejo (Visão Geral da Jornada)</label>
+      <textarea class="form-control" rows="3" [(ngModel)]="formData.instrucoesManejo"></textarea>
+    </div>
+
+    <div *ngIf="!formData.passo1PreparoSemente && !isLoadingScraping && !erroScrapingMensagem" class="text-center text-muted small p-4 bg-light rounded-3 border border-dashed mb-3">
+      <i class="fa-solid fa-wand-magic-sparkles text-warning fs-4 d-block mb-2"></i>
+      Escolha uma espécie na busca acima para a IA montar o guia completo automaticamente — da escolha da semente na loja até a colheita.
+    </div>
+
+    <div>
+      @for (passo of passosGuia; track passo.campo; let i = $index) {
+        <div class="wizard-passo" [class.aberto]="passoAbertoIndex === i">
+          <button type="button" class="wizard-cabecalho" (click)="abrirPasso(i)" [attr.aria-expanded]="passoAbertoIndex === i">
+            <span class="wizard-numero">{{ passo.numero }}</span>
+            <i class="fa-solid {{ passo.icone }} text-success"></i>
+            <span class="wizard-titulo">{{ passo.titulo }}</span>
+
+            <span *ngIf="isGrupo100Ia(passo.iaKeys)" class="badge px-2 py-1 rounded-pill" style="background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>100% IA</span>
+            <span *ngIf="isGrupoBaseOficial(passo.oficialKeys)" class="badge px-2 py-1 rounded-pill" style="background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-size: 10px; font-weight: 600;"><i class="fa-solid fa-globe me-1"></i>Base Oficial</span>
+            <span *ngIf="formData[passo.campo]" class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill" style="font-size: 10px;"><i class="fa-solid fa-check me-1"></i>Preenchido</span>
+
+            <i class="fa-solid fa-chevron-down wizard-chevron"></i>
+          </button>
+
+          @if (passoAbertoIndex === i) {
+            <div class="wizard-corpo">
+              <textarea
+                class="form-control form-control-sm"
+                rows="9"
+                [name]="passo.campo"
+                [(ngModel)]="formData[passo.campo]"
+                [placeholder]="passo.placeholder"
+              ></textarea>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="text-muted" style="font-size: 11px;">Editável — revise e ajuste conforme sua realidade.</span>
+                @if (i < passosGuia.length - 1) {
+                  <button type="button" class="btn btn-outline-success btn-sm px-3 rounded-pill fw-semibold" (click)="proximoPasso()">
+                    Próximo passo <i class="fa-solid fa-arrow-right ms-1"></i>
+                  </button>
+                } @else {
+                  <span class="badge bg-success px-3 py-2 rounded-pill small"><i class="fa-solid fa-flag-checkered me-1"></i> Último passo</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Barra de ações fixa (única) -->
+  <div class="barra-acoes-fixa d-flex justify-content-end gap-2 py-3 mt-4 border-top mobile-stack-actions">
+    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="voltar()">Cancelar</button>
+    <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvar()" [disabled]="isSaving || isUploadingImagem">
+      <i [class]="isSaving ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-floppy-disk me-1'"></i> {{ isSaving ? 'Cadastrando...' : 'Cadastrar' }}
+    </button>
   </div>
 </div>

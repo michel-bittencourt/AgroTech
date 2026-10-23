@@ -3,19 +3,91 @@
 @import '@angular/material/prebuilt-themes/indigo-pink.css';
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DESIGN TOKENS — fonte única do sistema (AgroTech)
+// Alterar valores aqui propaga para todo o app; componentes NÃO devem
+// hardcodar cores/espaços/raios — sempre referenciar tokens.
+// ═══════════════════════════════════════════════════════════════════════════
 :root {
+  // ── Marca (verdes AgroTech) ────────────────────────────────────────────────
   --agrotech-green-primary: #2e7d32;
   --agrotech-green-dark: #1b5e20;
   --agrotech-green-light: #e8f5e9;
   --agrotech-accent: #81c784;
+
+  // ── Neutros (cinza frio coerente com o fundo #f4f6f8 e texto #2c3e50) ─────
+  --neutral-50: #f7f9fa;
+  --neutral-100: #f4f6f8;
+  --neutral-200: #e4e9ee;
+  --neutral-300: #cfd8e0;
+  --neutral-400: #9fadb9;
+  --neutral-500: #71828f;
+  --neutral-600: #55636f;
+  --neutral-700: #3f4b56;
+  --neutral-800: #2c3e50;
+  --neutral-900: #1f2d3a;
+
+  // ── Semânticos ─────────────────────────────────────────────────────────────
+  --success: #2e7d32;
+  --warning: #f59e0b;
+  --danger: #dc3545;
+  --info: #0dcaf0;
+
+  // ── Tiers de conquista (UI_SPEC §6 — cores fixas; Facil escurecido p/ contraste AA) ──
+  --tier-facil: #6b7580;
+  --tier-medio: #198754;
+  --tier-dificil: #0d6efd;
+  --tier-muito-dificil: #6f42c1;
+  --tier-epico: #fd7e14;
+  --tier-lendario: #d4a017;
+
+  // ── Espaçamentos ───────────────────────────────────────────────────────────
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  // ── Raios ──────────────────────────────────────────────────────────────────
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  // ── Sombras ────────────────────────────────────────────────────────────────
+  --shadow-1: 0 2px 8px rgba(31, 45, 58, 0.06);
+  --shadow-2: 0 8px 24px rgba(31, 45, 58, 0.12);
+
+  // ── Tipografia ─────────────────────────────────────────────────────────────
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-xxl: 32px;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BASE
+// ═══════════════════════════════════════════════════════════════════════════
 body {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f4f6f8;
-  color: #2c3e50;
+  background-color: var(--neutral-100);
+  color: var(--neutral-800);
   margin: 0;
   padding: 0;
+  font-size: var(--font-size-md);
+}
+
+// Foco visível padrão (acessibilidade) para elementos interativos próprios
+.btn:focus-visible,
+.nav-link-agrotech:focus-visible,
+.chip-tier:focus-visible,
+.acordion-cabecalho:focus-visible,
+.botao-icone:focus-visible {
+  outline: 2px solid var(--agrotech-green-primary);
+  outline-offset: 2px;
 }
 
 .bg-agrotech-primary {
@@ -26,16 +98,378 @@ body {
   color: var(--agrotech-green-primary) !important;
 }
 
-.card-agrotech {
-  border: none;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILITÁRIOS DE PÁGINA (padrão comum das 4 telas)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Cabeçalho de página: título xl + subtítulo sm muted + ações à direita
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+
+  .page-titulo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--neutral-900);
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .page-subtitulo {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-500);
+    margin: var(--space-1) 0 0;
+  }
+
+  .page-acoes {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
 }
 
-.card-agrotech:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+// Card de seção padrão
+.section-card {
+  background-color: #ffffff;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-5);
+  margin-bottom: var(--space-4);
+
+  &.compacto {
+    padding: var(--space-4);
+  }
+}
+
+// Título de seção interna (número + título lg + descrição sm muted)
+.secao-titulo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+
+  .secao-numero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    border-radius: 50%;
+    background-color: var(--agrotech-green-primary);
+    color: #ffffff;
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    align-self: center;
+  }
+
+  .secao-nome {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--neutral-900);
+    margin: 0;
+  }
+
+  .secao-descricao {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-500);
+  }
+}
+
+// Empty state padronizado: ícone 40px neutro + texto + CTA
+.empty-state {
+  text-align: center;
+  padding: var(--space-7) var(--space-5);
+  background-color: var(--neutral-50);
+  border: 1px dashed var(--neutral-300);
+  border-radius: var(--radius-md);
+
+  .empty-icone {
+    font-size: 40px;
+    color: var(--neutral-400);
+    display: block;
+    margin-bottom: var(--space-3);
+  }
+
+  .empty-titulo {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--neutral-800);
+    margin: 0 0 var(--space-2);
+  }
+
+  .empty-texto {
+    font-size: var(--font-size-sm);
+    color: var(--neutral-500);
+    margin: 0 0 var(--space-4);
+  }
+}
+
+// Skeleton global (shimmer)
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-100) 50%, var(--neutral-200) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-slide {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+// Hero compacto de resumo (1 linha de métricas)
+.hero-compacto {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  background-color: #ffffff;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+
+  .hero-metrica {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    .hero-rotulo {
+      font-size: var(--font-size-xs);
+      color: var(--neutral-500);
+      display: block;
+    }
+
+    .hero-valor {
+      font-size: var(--font-size-lg);
+      font-weight: 700;
+      color: var(--neutral-900);
+      line-height: 1.1;
+    }
+  }
+
+  .hero-separador {
+    width: 1px;
+    height: 28px;
+    background-color: var(--neutral-200);
+  }
+}
+
+// Grid responsivo de cards de plantas (min 280px)
+.plantas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+// ─── Acordeão padrão (colapsáveis com chevron rotativo + aria-expanded) ────
+.acordeao {
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background-color: var(--neutral-50);
+  overflow: hidden;
+
+  + .acordeao {
+    margin-top: var(--space-3);
+  }
+
+  + .section-card {
+    margin-top: var(--space-4);
+  }
+}
+
+.section-card + .acordeao {
+  margin-top: var(--space-4);
+}
+
+.acordion-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--neutral-800);
+  text-align: left;
+
+  &:hover {
+    background-color: var(--neutral-100);
+  }
+
+  .acordeao-chevron {
+    margin-left: auto;
+    color: var(--neutral-500);
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+  }
+}
+
+.acordeao.aberto .acordion-cabecalho .acordeao-chevron {
+  transform: rotate(180deg);
+}
+
+.acordeao-corpo {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background-color: #ffffff;
+  border-top: 1px solid var(--neutral-200);
+}
+
+// Chips de filtro (tiers de conquista)
+.chip-tier {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  border: 1px solid var(--neutral-300);
+  background-color: #ffffff;
+  color: var(--neutral-600);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--neutral-400);
+    color: var(--neutral-800);
+  }
+
+  &.ativo {
+    background-color: var(--agrotech-green-light);
+    border-color: var(--agrotech-green-primary);
+    color: var(--agrotech-green-dark);
+  }
+
+  .chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+}
+
+// ─── Cards de conquista (painéis de jardim e página /conquistas) ────────────
+.tier-badge {
+  font-size: 0.66rem;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+
+.icone-lendario {
+  color: var(--tier-lendario);
+}
+
+.conquistas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.75rem;
+}
+
+.conquista-card {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border: 1px solid var(--neutral-300);
+  border-radius: 0.75rem;
+  background-color: var(--neutral-50);
+  opacity: 0.72;
+  transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  &.conquistada {
+    opacity: 1;
+    border-color: #1e5e3a66;
+    background: linear-gradient(135deg, #f4fbf7 0%, #e9f7ee 100%);
+
+    .conquista-icone {
+      background: linear-gradient(135deg, #1e5e3a 0%, #2d8a56 100%);
+      color: #ffd76a;
+      border-color: #1e5e3a;
+      box-shadow: 0 2px 6px rgba(30, 94, 58, 0.3);
+    }
+  }
+
+  .conquista-icone {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: #eef1ee;
+    color: var(--neutral-400);
+    border: 2px solid var(--neutral-300);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .conquista-info {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .conquista-titulo {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #212529;
+    line-height: 1.2;
+  }
+
+  .conquista-desc {
+    font-size: 0.72rem;
+    color: var(--neutral-500);
+    margin-top: 2px;
+    line-height: 1.25;
+  }
+
+  .conquista-progress {
+    height: 5px;
+    margin-top: 6px;
+    background-color: var(--neutral-300);
+  }
+
+  .conquista-status {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENTES GLOBAIS REUTILIZADOS
+// ═══════════════════════════════════════════════════════════════════════════
+.card-agrotech {
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+  }
 }
 
 /* Regras Responsivas Exclusivas para Dispositivos Móveis (Celulares < 768px) */

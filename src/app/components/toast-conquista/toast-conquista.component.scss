@@ -1,0 +1,111 @@
+.toast-conquista {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2000;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  max-width: 380px;
+  width: calc(100% - 2rem);
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e3e8e3;
+  border-left: 5px solid #d4a017;
+  animation: toast-conquista-entrada 0.3s ease;
+
+  .toast-conquista-icone {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    background-color: #fdf9ee;
+  }
+
+  .toast-conquista-corpo {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .toast-conquista-titulo {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .toast-conquista-fechar {
+    border: none;
+    background: transparent;
+    color: #6c757d;
+    padding: 0 0.15rem;
+    line-height: 1;
+
+    &:hover {
+      color: #212529;
+    }
+  }
+
+  .toast-conquista-nome {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e5e3a;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+
+  .toast-conquista-detalhe {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 6px;
+  }
+
+  .tier-badge {
+    font-size: 0.68rem;
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+  }
+
+  .toast-conquista-xp {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #b45309;
+  }
+}
+
+.toast-feedback {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background-color: #1e5e3a;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  animation: toast-conquista-entrada 0.3s ease;
+}
+
+@keyframes toast-conquista-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

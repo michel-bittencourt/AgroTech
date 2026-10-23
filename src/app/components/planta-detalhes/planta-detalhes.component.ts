@@ -1,10 +1,43 @@
-import { ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AgroTechService } from '../../services/agrotech.service';
-import { Especie, Planta } from '../../models/agrotech.models';
+import { Especie, Planta, EventoCalendarioItem, PlantaFotoItem, ClimaPlantaResponse } from '../../models/agrotech.models';
 import { environment } from '../../../environments/environment';
+import {
+  CuidadosSemana,
+  ConquistaItem,
+  ConquistaLista,
+  ESTAGIO_VISUAL,
+  EstagioCiclo,
+  GamificacaoPlantaResponse,
+  GerarGamificacaoResponse,
+  ORDEM_ESTAGIOS,
+  ORDEM_TIERS,
+  SeloConquistado,
+  StatusVida,
+  TIER_VISUAL,
+  TierConquista,
+  TrilhaEstagioItem,
+  TransicaoEstagioResponse,
+  TransplanteResponse,
+  cuidadoHojeRegistrado,
+  extrairMensagemErro,
+  formatarContagemRegressiva,
+  formatarDataHora,
+  larguraBarraSaude,
+  normalizarDiasCuidados,
+  proximoEstagio,
+  rotuloDiaCuidado,
+  transicaoDisponivel
+} from '../../models/gamificacao.models';
+import { GamificacaoHubService } from '../../services/gamificacao-hub.service';
+import { GamificacaoToastService } from '../../services/gamificacao-toast.service';
+
+/** Seções colapsáveis da tela de detalhe (redesign UI). */
+type SecaoGamificacao = 'trilha' | 'conquistas' | 'saude' | 'acoes';
 
 @Component({
   selector: 'app-planta-detalhes',
@@ -13,7 +46,7 @@ import { environment } from '../../../environments/environment';
   templateUrl: './planta-detalhes.component.html',
   styleUrls: ['./planta-detalhes.component.scss']
 })
-export class PlantaDetalhesComponent implements OnInit {
+export class PlantaDetalhesComponent implements OnInit, OnDestroy {
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
   plantaId: string | null = null;
@@ -88,15 +121,262 @@ export class PlantaDetalhesComponent implements OnInit {
     private router: Router,
     private agroTechService: AgroTechService,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) {
+    // Evento SignalR desta planta → atualiza trilha/XP/cards em tempo real (RN-022)
+    effect(() => {
+      const evento = this.gamificacaoHub.ultimaConquista();
+      if (evento && evento.plantaId === this.plantaId) {
+        this.carregarGamificacao();
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
+  // ─── Galeria de Evolução ─────────────────────────────────────────────────────
+  @ViewChild('fotoGaleriaInput') fotoGaleriaInput!: ElementRef<HTMLInputElement>;
+  fotos: PlantaFotoItem[] = [];
+  isLoadingFotos = false;
+  isEnviandoFotoGaleria = false;
+  dataFotoSelecionada = '';
+
+  carregarFotos(): void {
+    if (!this.plantaId) return;
+    this.isLoadingFotos = true;
+    this.agroTechService.getFotosPlanta(this.plantaId).subscribe({
+      next: (fotos) => {
+        this.fotos = fotos || [];
+        this.isLoadingFotos = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar galeria:', err);
+        this.isLoadingFotos = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  abrirSeletorFotoGaleria(): void {
+    this.fotoGaleriaInput.nativeElement.click();
+  }
+
+  onFotoGaleriaSelecionada(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0 || !this.plantaId) return;
+
+    const file = input.files[0];
+    this.isEnviandoFotoGaleria = true;
+    this.cdr.detectChanges();
+
+    this.agroTechService.uploadEspecieImagem(file).subscribe({
+      next: (res) => {
+        const dataFoto = this.dataFotoSelecionada ? `${this.dataFotoSelecionada}T12:00:00Z` : undefined;
+        this.agroTechService.adicionarFotoPlanta(this.plantaId!, res.url, dataFoto).subscribe({
+          next: () => {
+            this.isEnviandoFotoGaleria = false;
+            input.value = '';
+            this.carregarFotos();
+          },
+          error: (err) => {
+            console.error('Erro ao registrar foto na galeria:', err);
+            this.isEnviandoFotoGaleria = false;
+            this.cdr.detectChanges();
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Erro no upload da foto:', err);
+        this.isEnviandoFotoGaleria = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  removerFotoGaleria(foto: PlantaFotoItem): void {
+    if (!this.plantaId || !confirm('Remover esta foto da galeria?')) return;
+    this.agroTechService.removerFotoPlanta(this.plantaId, foto.id).subscribe({
+      next: () => this.carregarFotos(),
+      error: (err) => console.error('Erro ao remover foto:', err)
+    });
+  }
+
+  urlFotoGaleria(url: string): string {
+    return url.startsWith('http') ? url : `${this.apiBaseUrl}${url}`;
+  }
 
   ngOnInit(): void {
     this.plantaId = this.route.snapshot.paramMap.get('id');
     if (this.plantaId) {
       this.carregarPlanta(this.plantaId);
+      this.carregarCalendario();
+      this.carregarFotos();
+      this.carregarClima();
+      this.carregarGamificacao();
+      this.carregarConquistas();
+      this.gamificacaoHub.iniciar();
+      this.iniciarContagemRegressiva();
     } else {
       this.router.navigate(['/plantas']);
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.contagemInterval) {
+      clearInterval(this.contagemInterval);
+      this.contagemInterval = null;
+    }
+  }
+
+  // ─── Clima na região (advisory-only) ─────────────────────────────────────────
+  clima: ClimaPlantaResponse | null = null;
+
+  carregarClima(): void {
+    if (!this.plantaId) return;
+    this.agroTechService.getClima(this.plantaId).subscribe({
+      next: (res) => {
+        this.clima = res;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar clima:', err);
+      }
+    });
+  }
+
+  // ─── Calendário Preditivo de Cultivo ─────────────────────────────────────────
+  calendario: EventoCalendarioItem[] = [];
+  isLoadingCalendario = false;
+  isGerandoCalendario = false;
+  isConcluindoEvento = '';
+  etapaSelecionada = 'escolha_semente';
+  etapasIniciais = [
+    { chave: 'escolha_semente', label: '🌱 Escolha da semente na loja' },
+    { chave: 'teste_germinacao', label: '🧻 Teste de germinação' },
+    { chave: 'semeadura', label: '🌾 Semeadura' },
+    { chave: 'germinacao', label: '💧 Germinação' },
+    { chave: 'transplante', label: '🪴 Transplante das mudas' },
+    { chave: 'crescimento', label: '☀️ Crescimento' },
+    { chave: 'floracao', label: '🌸 Floração' },
+    { chave: 'colheita', label: '🧺 Colheita' }
+  ];
+
+  carregarCalendario(): void {
+    if (!this.plantaId) return;
+    this.isLoadingCalendario = true;
+    this.agroTechService.getCalendario(this.plantaId).subscribe({
+      next: (eventos) => {
+        this.calendario = eventos || [];
+        this.isLoadingCalendario = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar calendário:', err);
+        this.isLoadingCalendario = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  gerarCalendarioAgora(): void {
+    if (!this.plantaId || this.isGerandoCalendario) return;
+    this.isGerandoCalendario = true;
+    this.cdr.detectChanges();
+    this.agroTechService.gerarCalendario(this.plantaId, this.etapaSelecionada).subscribe({
+      next: (eventos) => {
+        this.calendario = eventos || [];
+        this.isGerandoCalendario = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Erro ao gerar calendário:', err);
+        this.isGerandoCalendario = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  concluirEvento(ev: EventoCalendarioItem): void {
+    if (!this.plantaId || this.isConcluindoEvento) return;
+    this.isConcluindoEvento = ev.id;
+    this.cdr.detectChanges();
+
+    // Meio-dia UTC evita deslocamento de fuso ao registrar a data real
+    const hojeIso = new Date().toISOString().slice(0, 10) + 'T12:00:00Z';
+    this.agroTechService.concluirEventoCalendario(this.plantaId, ev.id, hojeIso).subscribe({
+      next: () => {
+        this.isConcluindoEvento = '';
+        this.carregarCalendario();
+        // Marco de fase: a IA recalibra em background — acompanha e recarrega ao finalizar
+        if (['germinacao', 'transplante', 'crescimento', 'floracao', 'colheita'].includes(ev.chaveEtapa)) {
+          this.acompanharRecalibracaoIa();
+        }
+      },
+      error: (err) => {
+        console.error('Erro ao concluir evento:', err);
+        this.isConcluindoEvento = '';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  // Acompanha a recalibração da IA em background (poll a cada 4s, máx. 60s)
+  isRecalibrandoIa = false;
+  private recalibracaoPollInterval: any;
+
+  private acompanharRecalibracaoIa(): void {
+    if (!this.plantaId) return;
+
+    this.isRecalibrandoIa = true;
+    this.cdr.detectChanges();
+
+    if (this.recalibracaoPollInterval) {
+      clearInterval(this.recalibracaoPollInterval);
+    }
+
+    let tentativas = 0;
+    this.recalibracaoPollInterval = setInterval(() => {
+      tentativas++;
+      this.agroTechService.getStatusCalendario(this.plantaId!).subscribe({
+        next: (status) => {
+          if (!status.recalibrandoIa || tentativas >= 15) {
+            clearInterval(this.recalibracaoPollInterval);
+            this.recalibracaoPollInterval = null;
+            this.isRecalibrandoIa = false;
+            this.carregarCalendario();
+          }
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          clearInterval(this.recalibracaoPollInterval);
+          this.recalibracaoPollInterval = null;
+          this.isRecalibrandoIa = false;
+          this.cdr.detectChanges();
+        }
+      });
+    }, 4000);
+  }
+
+  get eventosAcoesHoje(): EventoCalendarioItem[] {
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    return this.calendario.filter((ev) => {
+      if (ev.concluido) return false;
+      const dataEv = ev.dataPrevista.slice(0, 10);
+      return dataEv <= hojeIso;
+    });
+  }
+
+  statusEvento(ev: EventoCalendarioItem): 'concluido' | 'atrasado' | 'hoje' | 'futuro' {
+    if (ev.concluido) return 'concluido';
+    const hojeIso = new Date().toISOString().slice(0, 10);
+    const dataEv = ev.dataPrevista.slice(0, 10);
+    if (dataEv < hojeIso) return 'atrasado';
+    if (dataEv === hojeIso) return 'hoje';
+    return 'futuro';
+  }
+
+  proximoEventoId(): string | null {
+    const proximo = this.calendario.find((ev) => !ev.concluido);
+    return proximo ? proximo.id : null;
   }
 
   carregarPlanta(id: string): void {
@@ -349,5 +629,485 @@ export class PlantaDetalhesComponent implements OnInit {
 
   getResumoEtapa(passo: number): string {
     return this.resumosEtapas[passo] || '';
+  }
+
+  // ─── Gamificação — Trilha do Cultivador (RN-009-12/13/15) ────────────────────
+
+  private readonly gamificacaoHub = inject(GamificacaoHubService);
+  private readonly toastService = inject(GamificacaoToastService);
+
+  gamificacao: GamificacaoPlantaResponse | null = null;
+  isLoadingGamificacao = true;
+  isGerandoGamificacao = false;
+  isAvancandoEstagio = false;
+  isRegistrandoTransplante = false;
+  isArquivando = false;
+
+  /** Conquistas conhecidas da planta (§5.7 carga inicial / §5.2 pós-geração). */
+  conquistas: ConquistaItem[] = [];
+  conquistasGeradas = false;
+
+  /** Destaque animado "+X XP" após transição confirmada (RN-010/014). */
+  xpDestaque: number | null = null;
+  selosRecentes: SeloConquistado[] = [];
+
+  /** Fallback do multiplicador pós-transição até o próximo GET §5.1. */
+  ultimoMultiplicador: number | null = null;
+
+  /** Janela de verificação exibida após "Registrar transplante" (RN-018). */
+  transplanteInfo: TransplanteResponse | null = null;
+
+  /** Fallback quando o §5.1 ainda não traz statusVida: arquivamento confirmado nesta sessão (RN-021). */
+  arquivadaNestaSessao = false;
+
+  /** statusVida persistente — §5.1 quando disponível, fallback da sessão. */
+  get statusVidaAtual(): StatusVida {
+    return this.gamificacao?.statusVida ?? (this.arquivadaNestaSessao ? 'Arquivada' : 'Ativa');
+  }
+
+  /** Planta arquivada (RN-021): badge "Histórico" + ações bloqueadas. */
+  get estaArquivada(): boolean {
+    return this.statusVidaAtual === 'Arquivada';
+  }
+
+  /** Multiplicador de streak — §5.1; fallback do response de transição (§5.3). */
+  get multiplicadorExibido(): number | null {
+    return this.gamificacao?.multiplicadorStreak ?? this.ultimoMultiplicador;
+  }
+
+  erroGamificacao = '';
+
+  showConfirmTransplante = false;
+  showConfirmArquivar = false;
+  observacaoTransplante = '';
+
+  /** "Agora" reativo para a contagem regressiva do stepper (atualizado a cada 60s). */
+  agora = new Date();
+  private contagemInterval: ReturnType<typeof setInterval> | null = null;
+
+  readonly ORDEM_ESTAGIOS = ORDEM_ESTAGIOS;
+  readonly ESTAGIO_VISUAL = ESTAGIO_VISUAL;
+  readonly TIER_VISUAL = TIER_VISUAL;
+  readonly ORDEM_TIERS = ORDEM_TIERS;
+
+  carregarGamificacao(): void {
+    if (!this.plantaId) return;
+    this.isLoadingGamificacao = this.gamificacao === null;
+    this.agroTechService.getGamificacaoPlanta(this.plantaId).subscribe({
+      next: (res) => {
+        this.gamificacao = res;
+        this.isLoadingGamificacao = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao carregar gamificação da planta:', err);
+        this.isLoadingGamificacao = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Item da trilha em que a planta está agora. */
+  get estagioAtualItem(): TrilhaEstagioItem | null {
+    const trilha = this.gamificacao?.trilha;
+    if (!trilha || trilha.length === 0) return null;
+    return trilha.find((t) => t.atual) ?? trilha[trilha.length - 1] ?? null;
+  }
+
+  get estagioAtualLabel(): string {
+    const item = this.estagioAtualItem;
+    return item ? (ESTAGIO_VISUAL[item.estagio]?.label ?? item.estagio) : '';
+  }
+
+  get estagioAtualIcone(): string {
+    const item = this.estagioAtualItem;
+    return item ? (ESTAGIO_VISUAL[item.estagio]?.icone ?? 'fa-seedling') : 'fa-seedling';
+  }
+
+  /** Trilha na ordem canônica Semente → Colheita. */
+  get trilhaOrdenada(): TrilhaEstagioItem[] {
+    const trilha = this.gamificacao?.trilha ?? [];
+    return [...trilha].sort((a, b) => ORDEM_ESTAGIOS.indexOf(a.estagio) - ORDEM_ESTAGIOS.indexOf(b.estagio));
+  }
+
+  estagioLabel(estagio: EstagioCiclo): string {
+    return ESTAGIO_VISUAL[estagio]?.label ?? estagio;
+  }
+
+  estagioIcone(estagio: EstagioCiclo): string {
+    return ESTAGIO_VISUAL[estagio]?.icone ?? 'fa-circle';
+  }
+
+  readonly metricasSaude: { chave: 'umidadeSolo' | 'temperatura' | 'luminosidade'; label: string; icone: string }[] = [
+    { chave: 'umidadeSolo', label: 'Umidade Solo', icone: 'fa-droplet' },
+    { chave: 'temperatura', label: 'Temperatura', icone: 'fa-temperature-half' },
+    { chave: 'luminosidade', label: 'Luminosidade', icone: 'fa-sun' }
+  ];
+
+  /** true/false conforme naFaixaIdeal; null quando métrica ausente (sem sensor). */
+  metricaNaFaixa(chave: 'umidadeSolo' | 'temperatura' | 'luminosidade'): boolean | null {
+    const metrica = this.gamificacao?.saudePorMetrica?.[chave];
+    return metrica ? metrica.naFaixaIdeal : null;
+  }
+
+  /** Largura proporcional da barra: posição do valorAtual dentro da faixa, saturada fora (§5.1). */
+  larguraSaude(chave: 'umidadeSolo' | 'temperatura' | 'luminosidade'): number {
+    const metrica = this.gamificacao?.saudePorMetrica?.[chave];
+    return metrica ? larguraBarraSaude(metrica) : 0;
+  }
+
+  private static readonly UNIDADES_SAUDE: Record<'umidadeSolo' | 'temperatura' | 'luminosidade', string> = {
+    umidadeSolo: '%',
+    temperatura: '°C',
+    luminosidade: ' lux'
+  };
+
+  /** Valor atual formatado com unidade (ex.: "55%", "24,5°C", "1500 lux"). */
+  valorSaudeTexto(chave: 'umidadeSolo' | 'temperatura' | 'luminosidade'): string {
+    const metrica = this.gamificacao?.saudePorMetrica?.[chave];
+    if (!metrica || typeof metrica.valorAtual !== 'number') return '—';
+    const valor = metrica.valorAtual.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    return `${valor}${PlantaDetalhesComponent.UNIDADES_SAUDE[chave]}`;
+  }
+
+  /** Faixa ideal formatada para tooltip (ex.: "Faixa ideal: 40 – 70"). */
+  faixaSaudeTexto(chave: 'umidadeSolo' | 'temperatura' | 'luminosidade'): string {
+    const metrica = this.gamificacao?.saudePorMetrica?.[chave];
+    if (!metrica?.faixaIdeal) return '';
+    const min = metrica.faixaIdeal.min.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    const max = metrica.faixaIdeal.max.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    return `Faixa ideal: ${min} – ${max}`;
+  }
+
+  concluidasCount(): number {
+    return this.conquistas.filter((c) => c.status === 'Concluida').length;
+  }
+
+  get proximoEstagioLabel(): string {
+    const atual = this.estagioAtualItem;
+    if (!atual) return '';
+    const proximo = proximoEstagio(atual.estagio);
+    return proximo ? (ESTAGIO_VISUAL[proximo]?.label ?? proximo) : '';
+  }
+
+  /** Botão "Avançar estágio" habilitado só quando podeTransicionarEm já passou (RN-010). */
+  podeAvancar(item: TrilhaEstagioItem): boolean {
+    return !!item.atual && transicaoDisponivel(item.podeTransicionarEm, this.agora);
+  }
+
+  contagemDoEstagio(item: TrilhaEstagioItem): string {
+    return formatarContagemRegressiva(item.podeTransicionarEm, this.agora);
+  }
+
+  /** Tooltip do botão "Avançar estágio" com o tempo restante quando bloqueado. */
+  get tituloBotaoAvancar(): string {
+    const item = this.estagioAtualItem;
+    if (!item) return '';
+    return this.podeAvancar(item) ? '' : this.contagemDoEstagio(item);
+  }
+
+  private iniciarContagemRegressiva(): void {
+    if (this.contagemInterval) return;
+    this.contagemInterval = setInterval(() => {
+      this.agora = new Date();
+      this.cdr.detectChanges();
+    }, 60_000);
+  }
+
+  avancarEstagio(): void {
+    const atual = this.estagioAtualItem;
+    if (!this.plantaId || !atual || !this.podeAvancar(atual) || this.isAvancandoEstagio) return;
+
+    const destino = proximoEstagio(atual.estagio);
+    if (!destino) return;
+
+    this.isAvancandoEstagio = true;
+    this.cdr.detectChanges();
+
+    this.agroTechService.avancarEstagio(this.plantaId, destino).subscribe({
+      next: (res: TransicaoEstagioResponse) => {
+        this.isAvancandoEstagio = false;
+        this.xpDestaque = res.xpGanho.total;
+        this.selosRecentes = res.selosConquistados || [];
+        this.ultimoMultiplicador = res.xpGanho.multiplicadorStreak ?? null;
+        // Fallback de tempo real: atualiza XP local com o response da própria ação
+        if (this.gamificacao) {
+          this.gamificacao = { ...this.gamificacao, xpTotal: this.gamificacao.xpTotal + res.xpGanho.total };
+        }
+        setTimeout(() => {
+          this.xpDestaque = null;
+          this.cdr.detectChanges();
+        }, 4000);
+        this.carregarGamificacao();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao avançar estágio:', err);
+        this.isAvancandoEstagio = false;
+        this.erroGamificacao = this.mensagemDeErro(err, 'Não foi possível avançar o estágio.');
+        setTimeout(() => {
+          this.erroGamificacao = '';
+          this.cdr.detectChanges();
+        }, 5000);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Lista completa de conquistas da planta (§5.7) — alimenta o grid do painel. */
+  carregarConquistas(): void {
+    if (!this.plantaId) return;
+    this.agroTechService.getConquistasDaPlanta(this.plantaId).subscribe({
+      next: (lista: ConquistaLista[]) => {
+        if (lista && lista.length > 0) {
+          this.conquistas = lista;
+          this.conquistasGeradas = true;
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        // Silencioso: lista vazia = gamificação ainda não gerada (estado vazio cuida do UX)
+        console.error('Erro ao carregar conquistas da planta:', err);
+      }
+    });
+  }
+
+  /** Conquistas agrupadas por tier na ordem fixa (UI_SPEC §6), respeitando o filtro ativo. */
+  conquistasAgrupadas(): { tier: TierConquista; itens: ConquistaItem[] }[] {
+    const filtro = this.tierFiltro();
+    return ORDEM_TIERS
+      .filter((tier) => !filtro || tier === filtro)
+      .map((tier) => ({ tier, itens: this.conquistas.filter((c) => c.tier === tier) }))
+      .filter((grupo) => grupo.itens.length > 0);
+  }
+
+  /** Estado vazio (sem conquistas geradas) — mensagem + botão "Gerar agora" (UI_SPEC §4.5). */
+  get semConquistasGeradas(): boolean {
+    return this.conquistasGeradas && this.conquistas.length === 0;
+  }
+
+  gerarAgora(): void {
+    if (!this.plantaId || this.isGerandoGamificacao) return;
+    this.isGerandoGamificacao = true;
+    this.erroGamificacao = '';
+    this.cdr.detectChanges();
+
+    this.agroTechService.gerarGamificacao(this.plantaId).subscribe({
+      next: (res: GerarGamificacaoResponse) => {
+        this.conquistas = res.conquistas || [];
+        this.conquistasGeradas = true;
+        this.isGerandoGamificacao = false;
+        this.carregarGamificacao();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isGerandoGamificacao = false;
+        if (err.status === 409) {
+          // ERR-GAM-005: gamificação já gerada — recarrega o grid existente via GET §5.7 + aviso informativo
+          this.conquistasGeradas = true;
+          this.toastService.exibirFeedback('Gamificação já gerada — exibindo conquistas existentes');
+          this.carregarConquistas();
+          this.carregarGamificacao();
+        } else {
+          this.erroGamificacao = this.mensagemDeErro(err, 'Falha ao gerar a gamificação.');
+          setTimeout(() => {
+            this.erroGamificacao = '';
+            this.cdr.detectChanges();
+          }, 5000);
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  abrirConfirmTransplante(): void {
+    if (this.estaArquivada) return;
+    this.observacaoTransplante = '';
+    this.showConfirmTransplante = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelarTransplante(): void {
+    this.showConfirmTransplante = false;
+    this.cdr.detectChanges();
+  }
+
+  executarTransplante(): void {
+    if (!this.plantaId || this.isRegistrandoTransplante) return;
+    this.isRegistrandoTransplante = true;
+    this.cdr.detectChanges();
+
+    const observacao = this.observacaoTransplante.trim();
+    this.agroTechService.registrarTransplante(this.plantaId, observacao.length > 0 ? observacao : undefined).subscribe({
+      next: (res: TransplanteResponse) => {
+        this.isRegistrandoTransplante = false;
+        this.showConfirmTransplante = false;
+        this.transplanteInfo = res;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao registrar transplante:', err);
+        this.isRegistrandoTransplante = false;
+        this.erroGamificacao = this.mensagemDeErro(err, 'Não foi possível registrar o transplante.');
+        this.showConfirmTransplante = false;
+        setTimeout(() => {
+          this.erroGamificacao = '';
+          this.cdr.detectChanges();
+        }, 5000);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  abrirConfirmArquivar(): void {
+    if (this.estaArquivada) return;
+    this.showConfirmArquivar = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelarArquivar(): void {
+    this.showConfirmArquivar = false;
+    this.cdr.detectChanges();
+  }
+
+  executarArquivar(): void {
+    if (!this.plantaId || this.isArquivando) return;
+    this.isArquivando = true;
+    this.cdr.detectChanges();
+
+    this.agroTechService.arquivarPlanta(this.plantaId).subscribe({
+      next: () => {
+        this.isArquivando = false;
+        this.showConfirmArquivar = false;
+        this.arquivadaNestaSessao = true;
+        this.carregarGamificacao();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao arquivar planta:', err);
+        this.isArquivando = false;
+        this.erroGamificacao = this.mensagemDeErro(err, 'Não foi possível arquivar a planta.');
+        this.showConfirmArquivar = false;
+        setTimeout(() => {
+          this.erroGamificacao = '';
+          this.cdr.detectChanges();
+        }, 5000);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  dataHora(iso?: string | null): string {
+    return formatarDataHora(iso);
+  }
+
+  /** Mensagem amigável a partir do envelope de erro do contrato (ERR-GAM-001..007). */
+  private mensagemDeErro(err: HttpErrorResponse, fallback: string): string {
+    if (err.status === 404) return 'Planta não encontrada.';
+    if (err.status === 0) return 'Não foi possível conectar ao servidor.';
+    return extrairMensagemErro(err.error, fallback);
+  }
+
+  // ─── Modo Manual de Saúde (CR-001 — RN-023/024/025) ──────────────────────────
+
+  isRegistrandoCuidado = false;
+
+  /** 7 indicadores (hoje → -6) normalizados para os dots do painel. */
+  dotsCuidados(): boolean[] {
+    return normalizarDiasCuidados(this.gamificacao?.cuidadosSemana);
+  }
+
+  /** Rótulo do dia pelo índice (0 = hoje) para tooltip dos dots. */
+  nomeDiaCuidado(indice: number): string {
+    return rotuloDiaCuidado(indice);
+  }
+
+  /** Cuidado de hoje já confirmado (§5.1 dias[0]=true) ⇒ botão desabilitado. */
+  get cuidadoHojeFeito(): boolean {
+    return cuidadoHojeRegistrado(this.gamificacao?.cuidadosSemana);
+  }
+
+  /** POST §5.8 — idempotente por dia; atualiza estado local + feedbacks no padrão existente. */
+  registrarCuidado(): void {
+    if (!this.plantaId || this.isRegistrandoCuidado || this.cuidadoHojeFeito) return;
+
+    this.isRegistrandoCuidado = true;
+    this.cdr.detectChanges();
+
+    this.agroTechService.registrarCuidado(this.plantaId).subscribe({
+      next: (res) => {
+        this.isRegistrandoCuidado = false;
+        if (res.registrouHoje) {
+          if (this.gamificacao) {
+            this.gamificacao = {
+              ...this.gamificacao,
+              xpTotal: this.gamificacao.xpTotal + res.xpGanho.total,
+              streakDiasAtual: res.streakDiasAtual,
+              multiplicadorStreak: res.xpGanho.multiplicadorStreak ?? this.gamificacao.multiplicadorStreak,
+              cuidadosSemana: this.cuidadosSemanaAposRegistroHoje(this.gamificacao.cuidadosSemana)
+            };
+          }
+          if (res.xpGanho.total > 0) {
+            this.xpDestaque = res.xpGanho.total;
+            setTimeout(() => {
+              this.xpDestaque = null;
+              this.cdr.detectChanges();
+            }, 4000);
+          }
+          this.toastService.exibirFeedback(`+${res.xpGanho.total} XP`);
+        } else {
+          this.toastService.exibirFeedback('Cuidado do dia já registrado');
+        }
+        // Re-sincroniza com a fonte da verdade (streak/dias vindos do §5.1)
+        this.carregarGamificacao();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao registrar cuidado manual:', err);
+        this.isRegistrandoCuidado = false;
+        // ERR-GAM-007 (planta com sensor) / ERR-GAM-004 (arquivada) via envelope do contrato
+        this.erroGamificacao = this.mensagemDeErro(err, 'Não foi possível registrar o cuidado.');
+        setTimeout(() => {
+          this.erroGamificacao = '';
+          this.cdr.detectChanges();
+        }, 5000);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** CuidadosSemana imutável com hoje marcado (feedback imediato até o GET §5.1 re-sincronizar). */
+  private cuidadosSemanaAposRegistroHoje(atual?: CuidadosSemana | null): CuidadosSemana {
+    const dias = normalizarDiasCuidados(atual);
+    const jaMarcado = dias[0];
+    dias[0] = true;
+    return { confirmados: (atual?.confirmados ?? 0) + (jaMarcado ? 0 : 1), dias };
+  }
+
+  // ─── Layout: seções colapsáveis + filtro de tier (redesign UI) ───────────────
+
+  /** Estado dos acordeões (trilha e conquistas abertas; saúde e ações fechadas). */
+  readonly secoesAbertas = signal<Record<SecaoGamificacao, boolean>>({
+    trilha: true,
+    conquistas: true,
+    saude: false,
+    acoes: false
+  });
+
+  /** Filtro ativo do painel de conquistas; null = todos os tiers. */
+  readonly tierFiltro = signal<TierConquista | null>(null);
+
+  alternarSecao(secao: SecaoGamificacao): void {
+    this.secoesAbertas.update((estado) => ({ ...estado, [secao]: !estado[secao] }));
+    this.cdr.detectChanges();
+  }
+
+  alternarFiltroTier(tier: TierConquista | null): void {
+    this.tierFiltro.set(this.tierFiltro() === tier ? null : tier);
+    this.cdr.detectChanges();
+  }
+
+  contagemPorTier(tier: TierConquista): number {
+    return this.conquistas.filter((c) => c.tier === tier).length;
   }
 }

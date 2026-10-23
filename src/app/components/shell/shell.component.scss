@@ -1,0 +1,304 @@
+// ─── Shell: sidebar colapsável + topbar + conteúdo ──────────────────────────
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-right: 1px solid var(--neutral-200);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 100;
+  transition: width 0.2s ease, min-width 0.2s ease;
+
+  &.colapsada {
+    width: 64px;
+    min-width: 64px;
+  }
+}
+
+.sidebar-marca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--neutral-200);
+
+  .marca-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: var(--radius-sm);
+    background-color: var(--agrotech-green-primary);
+    color: #ffffff;
+    font-size: var(--font-size-md);
+  }
+
+  .marca-nome {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--agrotech-green-dark);
+    white-space: nowrap;
+  }
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-2);
+  flex-grow: 1;
+}
+
+// ─── Grupos expansíveis do menu (Jardim / Configurações) ────────────────────
+
+.nav-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-grupo-botao {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--neutral-700);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  i {
+    width: 20px;
+    min-width: 20px;
+    text-align: center;
+    font-size: var(--font-size-md);
+    color: var(--agrotech-green-primary);
+  }
+
+  .nav-chevron {
+    margin-left: auto;
+    color: var(--neutral-500);
+    transition: transform 0.2s ease;
+    transform: rotate(0deg);
+  }
+
+  &:hover {
+    background-color: var(--neutral-100);
+    color: var(--agrotech-green-dark);
+  }
+}
+
+.nav-grupo.aberto .nav-grupo-botao .nav-chevron {
+  transform: rotate(180deg);
+}
+
+// No rail, grupo inteiro centraliza o ícone
+.sidebar.colapsada .nav-grupo-botao {
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+.nav-subitens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 2px var(--space-5);
+}
+
+.nav-subitem {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-left: 2px solid var(--neutral-200);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background-color: transparent;
+  color: var(--neutral-600);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--neutral-100);
+    color: var(--agrotech-green-dark);
+  }
+
+  &.ativa {
+    background-color: var(--agrotech-green-light);
+    border-left-color: var(--agrotech-green-primary);
+    color: var(--agrotech-green-dark);
+    font-weight: 700;
+  }
+}
+
+.sidebar-rodape {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--neutral-200);
+}
+
+// Card compacto de XP do Cultivador (contrato §6.1); some sem quebrar se a API falhar
+.xp-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--agrotech-green-light) 0%, #f1f8f2 100%);
+  border: 1px solid #d4e8dc;
+  overflow: hidden;
+
+  .xp-icone {
+    color: var(--agrotech-green-primary);
+  }
+
+  .xp-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .xp-rotulo {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-500);
+  }
+
+  .xp-valor {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--agrotech-green-dark);
+  }
+
+  .xp-extra {
+    font-size: var(--font-size-xs);
+    color: var(--neutral-500);
+  }
+
+  .xp-mini {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--agrotech-green-dark);
+    white-space: nowrap;
+  }
+}
+
+.sidebar.colapsada .xp-card {
+  flex-direction: column;
+  padding: var(--space-2);
+}
+
+// Toggle de colapso
+.botao-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  color: var(--neutral-600);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background-color: var(--neutral-100);
+    color: var(--agrotech-green-dark);
+  }
+}
+
+.toggle-sidebar {
+  align-self: flex-start;
+}
+
+// ─── Conteúdo + topbar ──────────────────────────────────────────────────────
+
+.conteudo {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hamburger-flutuante {
+  display: none;
+}
+
+.conteudo-pagina {
+  flex-grow: 1;
+  padding-top: var(--space-4);
+}
+
+// ─── Mobile (< 768px): sidebar off-canvas + hamburger fixo ─────────────────
+@media (max-width: 767.98px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: var(--shadow-2);
+
+    &.colapsada {
+      width: 240px;
+      min-width: 240px;
+    }
+  }
+
+  .shell.sidebar-aberta .sidebar {
+    transform: translateX(0);
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background-color: rgba(31, 45, 58, 0.5);
+    border: none;
+    padding: 0;
+  }
+
+  .hamburger-flutuante {
+    display: inline-flex;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 90;
+  }
+}
+
+// ─── Modal Servidor API (configuração de sistema) ───────────────────────────
+.modal-api-overlay {
+  background-color: rgba(31, 45, 58, 0.5);
+}
+
+.modal-api-box {
+  max-width: 520px;
+  width: 90%;
+}

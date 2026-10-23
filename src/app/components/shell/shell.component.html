@@ -1,0 +1,120 @@
+<div class="shell" [class.sidebar-aberta]="mobileAberta()">
+  <aside class="sidebar" [class.colapsada]="colapsada()" aria-label="Menu principal">
+    <div class="sidebar-marca">
+      <span class="marca-icone"><i class="fa-solid fa-seedling"></i></span>
+      @if (!colapsada()) {
+        <span class="marca-nome">AgroTech</span>
+      }
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (grupo of gruposMenu; track grupo.id) {
+        <div class="nav-grupo" [class.aberto]="grupoAberto(grupo.id)">
+          <button type="button"
+                  class="nav-grupo-botao"
+                  (click)="clicarGrupo(grupo.id)"
+                  [attr.aria-expanded]="grupoAberto(grupo.id)"
+                  [attr.aria-controls]="'grupo-' + grupo.id"
+                  [title]="grupo.rotulo">
+            <i class="fa-solid {{ grupo.icone }}"></i>
+            @if (!colapsada()) {
+              <span class="nav-rotulo">{{ grupo.rotulo }}</span>
+              <i class="fa-solid fa-chevron-down nav-chevron"></i>
+            }
+          </button>
+
+          @if (!colapsada() && grupoAberto(grupo.id)) {
+            <div class="nav-subitens" [id]="'grupo-' + grupo.id">
+              @for (item of grupo.itens; track item.rotulo) {
+                @if (item.rota) {
+                  <a class="nav-subitem"
+                     [class.ativa]="itemEstaAtivo(item)"
+                     [routerLink]="item.rota">
+                    {{ item.rotulo }}
+                  </a>
+                } @else {
+                  <button type="button" class="nav-subitem" (click)="item.acao?.()">
+                    {{ item.rotulo }}
+                  </button>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </nav>
+
+    <div class="sidebar-rodape">
+      @if (jardim(); as j) {
+        <div class="xp-card" title="XP do Cultivador: {{ j.xpTotalCultivador }}">
+          <i class="fa-solid fa-bolt xp-icone"></i>
+          @if (!colapsada()) {
+            <div class="xp-info">
+              <span class="xp-rotulo">XP do Cultivador</span>
+              <span class="xp-valor">{{ j.xpTotalCultivador }} XP</span>
+              <span class="xp-extra">{{ colecaoConcluidas() }}/{{ j.conquistasColecao.length }} de coleção</span>
+            </div>
+          } @else {
+            <span class="xp-mini">{{ xpCompacto() }}</span>
+          }
+        </div>
+      }
+
+      <button type="button"
+              class="botao-icone toggle-sidebar"
+              (click)="alternarColapsada()"
+              [attr.aria-expanded]="!colapsada()"
+              [title]="colapsada() ? 'Expandir menu' : 'Colapsar menu'"
+              aria-label="Colapsar ou expandir menu">
+        <i class="fa-solid" [ngClass]="colapsada() ? 'fa-bars' : 'fa-chevron-left'"></i>
+      </button>
+    </div>
+  </aside>
+
+  @if (mobileAberta()) {
+    <div class="backdrop" (click)="fecharMobile()" aria-hidden="true"></div>
+  }
+
+  <div class="conteudo">
+    <button type="button" class="botao-icone hamburger-flutuante" (click)="abrirMobile()" aria-label="Abrir menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <main class="conteudo-pagina">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<!-- Modal: Configuração do Servidor API (configuração de sistema — movida do /plantas) -->
+@if (modalApiAberto()) {
+  <div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3 modal-api-overlay">
+    <div class="card border-0 shadow-lg rounded-4 p-4 bg-white modal-api-box">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+          <i class="fa-solid fa-network-wired text-success"></i>
+          <span>Configurar Servidor API</span>
+        </h5>
+        <button type="button" class="btn-close" (click)="fecharModalApi()" aria-label="Fechar"></button>
+      </div>
+      <p class="text-muted small mb-3">
+        Informe a URL pública HTTPS do seu túnel Cloudflare para conectar a Vercel ao seu backend local.
+      </p>
+
+      <div class="mb-4">
+        <label class="form-label small fw-bold text-secondary">URL Base da API</label>
+        <input type="text" class="form-control form-control-lg rounded-3 fs-6" placeholder="https://xxxx.trycloudflare.com/api" [(ngModel)]="inputApiUrl" />
+        <div class="form-text text-muted mt-2" style="font-size: 11px;">
+          Exemplo: <code>https://citizenship-edited-necessarily-workout.trycloudflare.com/api</code>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2 mobile-stack-actions">
+        <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="fecharModalApi()">Cancelar</button>
+        <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvarEConectarApi()">Salvar & Conectar</button>
+      </div>
+    </div>
+  </div>
+}
+
+<app-toast-conquista />

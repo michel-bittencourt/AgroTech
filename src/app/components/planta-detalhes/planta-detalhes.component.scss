@@ -26,3 +26,454 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
   }
 }
+
+// --- Timeline do Calend�rio Preditivo ----------------------------------------
+.timeline-cultivo {
+  position: relative;
+  padding-left: 6px;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 0.85rem;
+  position: relative;
+  padding-bottom: 1.1rem;
+
+  // linha vertical conectando os marcos
+  &::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background-color: #e3e8e3;
+  }
+
+  &:last-child {
+    padding-bottom: 0;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  .timeline-marcador {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    z-index: 1;
+    background-color: #eef1ee;
+    color: #9aa5a0;
+    border: 2px solid #e3e8e3;
+  }
+
+  &.concluido .timeline-marcador {
+    background-color: #1e5e3a;
+    color: #ffffff;
+    border-color: #1e5e3a;
+  }
+
+  &.atrasado .timeline-marcador {
+    background-color: #fef3c7;
+    color: #b45309;
+    border-color: #f59e0b;
+  }
+
+  &.hoje .timeline-marcador {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    border-color: #3b82f6;
+  }
+
+  .timeline-conteudo {
+    background-color: #fafcfa;
+    border: 1px solid #eceff0;
+    border-radius: 0.65rem;
+    padding: 0.55rem 0.8rem;
+  }
+
+  &.atrasado .timeline-conteudo {
+    border-color: #fcd34d55;
+    background-color: #fffbeb;
+  }
+
+  &.hoje .timeline-conteudo {
+    border-color: #bfdbfe;
+    background-color: #f0f7ff;
+  }
+}
+
+// --- Galeria de Evolu��o -----------------------------------------------------
+.galeria-foto {
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 1px solid #e3e8e3;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: scale(1.04);
+  }
+}
+
+// --- Card de clima -----------------------------------------------------------
+.clima-dia {
+  flex: 1 1 120px;
+  max-width: 170px;
+  background-color: #f4f9fb;
+  border: 1px solid #e1ecf2;
+  border-radius: 0.75rem;
+  padding: 0.6rem;
+}
+
+// --- Gamificação — Trilha do Cultivador (RN-009-12/13) -----------------------
+
+// Card-resumo sempre visível
+.resumo-foto {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  border: 1px solid var(--neutral-200);
+}
+
+.resumo-foto-vazia {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--agrotech-green-light);
+  color: var(--agrotech-green-primary);
+  font-size: 1.6rem;
+}
+
+.saude-compacta .progress {
+  height: 6px;
+}
+
+// Painel "Cuidados da semana" — Modo Manual de Saúde (CR-001)
+.cuidados-semana {
+  padding: var(--space-3);
+  border: 1px solid var(--neutral-200);
+  border-radius: var(--radius-md);
+  background-color: var(--neutral-50);
+
+  .dot-cuidado {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--neutral-200);
+    border: 1px solid var(--neutral-300);
+    color: #ffffff;
+    font-size: 9px;
+
+    &.preenchido {
+      background-color: var(--agrotech-green-primary);
+      border-color: var(--agrotech-green-primary);
+    }
+  }
+}
+
+.skeleton-curto {
+  width: 40%;
+  height: 20px;
+}
+
+// Acordeão de ações: zona de risco discreta (borda com detalhe de perigo)
+.acordeao-acoes {
+  border-left: 3px solid var(--neutral-300);
+
+  .acordion-cabecalho:hover {
+    background-color: var(--neutral-100);
+  }
+}
+
+.xp-card {
+  background: linear-gradient(135deg, #f4fbf7 0%, #e9f7ee 100%);
+  border: 1px solid #d4e8dc;
+}
+
+.xp-flutuante {
+  position: absolute;
+  top: 0.4rem;
+  right: 1rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #1e5e3a;
+  animation: xp-sobe 4s ease forwards;
+}
+
+@keyframes xp-sobe {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.trilha-stepper {
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding-top: var(--space-2);
+  padding-bottom: 0.25rem;
+}
+
+.trilha-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 76px;
+  flex: 1;
+  position: relative;
+
+  // linha conectora entre os estágios
+  &:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 22px);
+    width: calc(100% - 44px);
+    height: 2px;
+    background-color: #e3e8e3;
+  }
+
+  &.concluido:not(:last-child)::after {
+    background-color: #1e5e3a;
+  }
+
+  .trilha-bolha {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    background-color: #eef1ee;
+    color: #9aa5a0;
+    border: 2px solid #e3e8e3;
+    z-index: 1;
+  }
+
+  .trilha-label {
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+  }
+
+  &.concluido .trilha-bolha {
+    background-color: #1e5e3a;
+    border-color: #1e5e3a;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(30, 94, 58, 0.12);
+  }
+
+  &.concluido .trilha-label {
+    color: #1e5e3a;
+  }
+
+  &.atual .trilha-bolha {
+    background-color: #ffffff;
+    border-color: #f59e0b;
+    color: #b45309;
+    box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.18);
+    animation: pulso-atual 2.2s ease-in-out infinite;
+  }
+
+  &.atual .trilha-label {
+    color: #b45309;
+    font-weight: 700;
+  }
+
+  &.bloqueado {
+    opacity: 0.65;
+  }
+}
+
+@keyframes pulso-atual {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.25);
+  }
+}
+
+.saude-progress {
+  height: 8px;
+  background-color: #e3e8e3;
+}
+
+// Modal de confirmação (transplante / arquivar)
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-box {
+  max-width: 480px;
+  width: 90%;
+}
+
+// Painel de Conquistas (RN-009-13)
+.tier-header {
+  letter-spacing: 0.02em;
+}
+
+.conquistas-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.conquista-medalha {
+  display: flex;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border: 1px solid #e3e8e3;
+  border-radius: 0.75rem;
+  background-color: #fafcfa;
+  opacity: 0.55;
+  transition: opacity 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  .medalha-icone {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: #f1f3f1;
+    border: 2px solid;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .medalha-info {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .medalha-titulo {
+    font-weight: 700;
+    font-size: 0.82rem;
+    color: #212529;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .medalha-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 3px;
+  }
+
+  .medalha-xp {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #b45309;
+  }
+
+  .medalha-status {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .tier-badge {
+    font-size: 0.66rem;
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+  }
+
+  &.concluida {
+    opacity: 1;
+    border-color: #1e5e3a66;
+    background: linear-gradient(135deg, #f4fbf7 0%, #e9f7ee 100%);
+
+    .medalha-icone {
+      background-color: #ffffff;
+      box-shadow: 0 2px 6px rgba(30, 94, 58, 0.2);
+    }
+  }
+
+  // Destaque visual Épico / Lendário (UI_SPEC §4.3)
+  &.epica.concluida {
+    box-shadow: 0 0 14px rgba(253, 126, 20, 0.45);
+  }
+
+  &.lendaria.concluida {
+    box-shadow: 0 0 16px rgba(212, 160, 23, 0.55);
+    animation: brilho-lendario 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes brilho-lendario {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(212, 160, 23, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 160, 23, 0.7);
+  }
+}
+
+// Overlay de geração de gamificação (RN-017)
+.overlay-gerando {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border-radius: 0.9rem;
+  background-color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(2px);
+}
+
+// Skeleton de carregamento (UI_SPEC §4.5)
+.skeleton-bloco {
+  height: 56px;
+  border-radius: 0.6rem;
+  background: linear-gradient(90deg, #eef1ee 25%, #f7f9f7 50%, #eef1ee 75%);
+  background-size: 200% 100%;
+  animation: skeleton-slide 1.2s ease-in-out infinite;
+}
+
+.skeleton-largo {
+  height: 38px;
+}
+
+@keyframes skeleton-slide {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}

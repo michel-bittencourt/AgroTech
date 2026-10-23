@@ -1,0 +1,161 @@
+<div class="container pb-5">
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-medal text-warning"></i> Conquistas</h1>
+      <p class="page-subtitulo">Marcos do seu jardim</p>
+    </div>
+  </div>
+
+  <!-- Carregando -->
+  @if (isLoading()) {
+    <div class="skeleton mb-3"></div>
+    <div class="skeleton mb-3"></div>
+    <div class="skeleton skeleton-curto"></div>
+  }
+
+  @if (!isLoading()) {
+    <!-- Empty state: jardim sem gamificação e catálogo vazio -->
+    @if (jardimVazio) {
+      <div class="empty-state">
+        <i class="fa-solid fa-medal empty-icone"></i>
+        <h3 class="empty-titulo">Nenhuma conquista por aqui ainda</h3>
+        <p class="empty-texto">Conquistas serão geradas ao cultivar suas primeiras plantas</p>
+        <a routerLink="/plantas" class="btn btn-success px-4 rounded-pill shadow-sm">
+          <i class="fa-solid fa-seedling me-1"></i> Ir para o Jardim
+        </a>
+      </div>
+    } @else {
+      <!-- Resumo: XP do Cultivador (§6.1) -->
+      @if (jardim(); as j) {
+        <div class="hero-compacto">
+          <div class="hero-metrica">
+            <i class="fa-solid fa-bolt text-warning"></i>
+            <div>
+              <span class="hero-rotulo">XP do Cultivador</span>
+              <span class="hero-valor">{{ j.xpTotalCultivador }}</span>
+            </div>
+          </div>
+          <div class="hero-separador"></div>
+          <div class="hero-metrica">
+            <i class="fa-solid fa-leaf text-agrotech-primary"></i>
+            <div>
+              <span class="hero-rotulo">Plantas</span>
+              <span class="hero-valor">{{ j.plantasAtivas }} <span class="text-muted fw-normal">ativas de {{ j.totalPlantas }}</span></span>
+            </div>
+          </div>
+          <div class="hero-separador"></div>
+          <div class="hero-metrica">
+            <i class="fa-solid fa-medal icone-lendario"></i>
+            <div>
+              <span class="hero-rotulo">Coleção</span>
+              <span class="hero-valor">{{ concluidasColecao() }} <span class="text-muted fw-normal">de {{ j.conquistasColecao.length }}</span></span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Conquistas de coleção (§6.1) com filtro por tier -->
+      @if ((jardim()?.conquistasColecao?.length ?? 0) > 0) {
+        <div class="section-card">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-trophy text-warning me-2"></i>Conquistas de Coleção</h6>
+            <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill small">
+              {{ concluidasColecao() }}/{{ jardim()?.conquistasColecao?.length ?? 0 }} concluídas
+            </span>
+          </div>
+
+          <!-- Filtro por tier (chips com cores fixas --tier-*) -->
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <button type="button" class="chip-tier" [class.ativo]="tierFiltro() === null" (click)="alternarFiltroTier(null)">
+              <i class="fa-solid fa-layer-group"></i> Todos
+            </button>
+            @for (tier of ordemTiers; track tier) {
+              @if (contagemPorTier(tier) > 0) {
+                <button type="button"
+                        class="chip-tier"
+                        [class.ativo]="tierFiltro() === tier"
+                        (click)="alternarFiltroTier(tier)"
+                        [attr.aria-pressed]="tierFiltro() === tier">
+                  <span class="chip-dot" [style.backgroundColor]="tierCor(tier)"></span>
+                  {{ tierVisual[tier].label }}
+                  <span class="text-muted">{{ contagemPorTier(tier) }}</span>
+                </button>
+              }
+            }
+          </div>
+
+          <div class="conquistas-grid">
+            @for (c of colecoesFiltradas(); track c.id) {
+              <div class="conquista-card"
+                   [class.conquistada]="c.status === 'Concluida'"
+                   [title]="c.descricao">
+                <div class="conquista-icone" [style.color]="tierCor(c.tier)" [style.borderColor]="tierCor(c.tier)">
+                  <i class="fa-solid" [ngClass]="c.status === 'Concluida' ? tierIcone(c.tier) : 'fa-lock'"></i>
+                </div>
+                <div class="conquista-info">
+                  <div class="conquista-titulo">
+                    {{ c.titulo }}
+                    <span class="badge ms-1 tier-badge" [style.backgroundColor]="tierCor(c.tier)">{{ tierVisual[c.tier].label }}</span>
+                  </div>
+                  <div class="conquista-desc">{{ c.descricao }}</div>
+                  @if (c.status !== 'Concluida') {
+                    <div class="progress conquista-progress">
+                      <div class="progress-bar" [ngClass]="c.tier === 'Lendario' ? 'bg-warning' : 'bg-success'" [style.width.%]="percentualProgresso(c)"></div>
+                    </div>
+                  }
+                  <div class="conquista-status">
+                    @if (c.status === 'Concluida' && c.dataDesbloqueio) {
+                      <span class="text-success"><i class="fa-solid fa-check me-1"></i>Conquistada {{ c.dataDesbloqueio | date:'dd/MM/yy HH:mm' }}</span>
+                    } @else {
+                      <span class="text-muted">{{ c.progresso ? (c.progresso.atual + '/' + c.progresso.necessario) : 'Bloqueada' }} · +{{ c.xpRecompensa }} XP</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (colecoesFiltradas().length === 0) {
+            <p class="text-muted small text-center py-3 mb-0">Nenhuma conquista neste tier.</p>
+          }
+        </div>
+      }
+
+      <!-- Catálogo clássico de conquistas (endpoint /conquistas) -->
+      @if (catalogo().length > 0) {
+        <div class="section-card">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-star text-warning me-2"></i>Catálogo de Conquistas</h6>
+            <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill small">
+              <i class="fa-solid fa-medal me-1"></i> {{ catalogoConquistadas() }}/{{ catalogo().length }} conquistadas
+            </span>
+          </div>
+
+          <div class="conquistas-grid">
+            @for (c of catalogo(); track c.chave) {
+              <div class="conquista-card" [class.conquistada]="c.conquistada" [title]="c.descricao">
+                <div class="conquista-icone">
+                  <i class="fa-solid" [ngClass]="c.icone"></i>
+                </div>
+                <div class="conquista-info">
+                  <div class="conquista-titulo">{{ c.titulo }}</div>
+                  <div class="conquista-desc">{{ c.descricao }}</div>
+                  <div class="progress conquista-progress" *ngIf="!c.conquistada">
+                    <div class="progress-bar bg-success" [style.width.%]="(c.progressoAtual / c.progressoAlvo) * 100"></div>
+                  </div>
+                  <div class="conquista-status">
+                    @if (c.conquistada) {
+                      <span class="text-success"><i class="fa-solid fa-check me-1"></i>Conquistada {{ c.conquistadaEm | date:'dd/MM/yy' }}</span>
+                    } @else {
+                      <span class="text-muted">{{ c.progressoAtual }}/{{ c.progressoAlvo }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  }
+</div>

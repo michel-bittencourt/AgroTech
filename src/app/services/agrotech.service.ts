@@ -2,7 +2,18 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Especie, EspecieScraped, EspecieSugestao, Planta, CreatePlantaRequest, DiarioNotaItem, CriarDiarioNotaRequest, AnaliseSaudeIaResponse, DiarioBordoEtapaResponse, ScrapingProgresso } from '../models/agrotech.models';
+import { Especie, EspecieScraped, EspecieSugestao, Planta, CreatePlantaRequest, DiarioNotaItem, CriarDiarioNotaRequest, AnaliseSaudeIaResponse, DiarioBordoEtapaResponse, ScrapingProgresso, CultivoContexto, EventoCalendarioItem, ConquistaProgresso, PlantaFotoItem, NotificacaoItem, ClimaPlantaResponse } from '../models/agrotech.models';
+import {
+  ConquistaLista,
+  EstagioCiclo,
+  GamificacaoPlantaResponse,
+  GerarGamificacaoResponse,
+  JardimGamificacaoResponse,
+  ManejoResponse,
+  RegistroCuidadoResponse,
+  TransicaoEstagioResponse,
+  TransplanteResponse
+} from '../models/gamificacao.models';
 
 @Injectable({
   providedIn: 'root'
@@ -37,16 +48,18 @@ export class AgroTechService {
     );
   }
 
-  scrapeEspecie(nomeBusca: string, nomeCientifico?: string): Observable<EspecieScraped> {
+  scrapeEspecie(nomeBusca: string, nomeCientifico?: string, contexto?: CultivoContexto): Observable<EspecieScraped> {
     console.log(`[AgroTechService] 🤖 Solicitando scraping botânico para "${nomeBusca}" (${nomeCientifico || 'sem nome científico'}) -> ${this.apiUrl}/especies/scraping`);
-    return this.http.post<EspecieScraped>(`${this.apiUrl}/especies/scraping`, { nomeBusca, nomeCientifico }, { headers: this.defaultHeaders }).pipe(
+    const body = { nomeBusca, nomeCientifico, ...(contexto || {}) };
+    return this.http.post<EspecieScraped>(`${this.apiUrl}/especies/scraping`, body, { headers: this.defaultHeaders }).pipe(
       tap(res => console.log(`[AgroTechService] ✅ Dados de scraping recebidos:`, res))
     );
   }
 
-  iniciarScrapingComProgresso(nomeBusca: string, nomeCientifico?: string): Observable<{ sessaoId: string; tempoEstimadoSegundos: number }> {
+  iniciarScrapingComProgresso(nomeBusca: string, nomeCientifico?: string, contexto?: CultivoContexto): Observable<{ sessaoId: string; tempoEstimadoSegundos: number }> {
     console.log(`[AgroTechService] 🚀 Iniciando coleta profunda com progresso para "${nomeBusca}" -> ${this.apiUrl}/especies/scraping/iniciar`);
-    return this.http.post<{ sessaoId: string; tempoEstimadoSegundos: number }>(`${this.apiUrl}/especies/scraping/iniciar`, { nomeBusca, nomeCientifico }, { headers: this.defaultHeaders });
+    const body = { nomeBusca, nomeCientifico, ...(contexto || {}) };
+    return this.http.post<{ sessaoId: string; tempoEstimadoSegundos: number }>(`${this.apiUrl}/especies/scraping/iniciar`, body, { headers: this.defaultHeaders });
   }
 
   getProgressoScraping(sessaoId: string): Observable<ScrapingProgresso> {
@@ -97,6 +110,47 @@ export class AgroTechService {
   getPlantaById(id: string): Observable<Planta> {
     console.log(`[AgroTechService] 🔍 Buscando planta ID=${id}`);
     return this.http.get<Planta>(`${this.apiUrl}/plantas/${id}`, { headers: this.defaultHeaders });
+  }
+
+  getCalendario(plantaId: string): Observable<EventoCalendarioItem[]> {
+    return this.http.get<EventoCalendarioItem[]>(`${this.apiUrl}/plantas/${plantaId}/calendario`, { headers: this.defaultHeaders });
+  }
+
+  gerarCalendario(plantaId: string, chaveEtapaInicial: string): Observable<EventoCalendarioItem[]> {
+    console.log(`[AgroTechService] 📅 Gerando calendário preditivo a partir da etapa "${chaveEtapaInicial}"`);
+    return this.http.post<EventoCalendarioItem[]>(`${this.apiUrl}/plantas/${plantaId}/calendario/gerar`, { chaveEtapaInicial }, { headers: this.defaultHeaders });
+  }
+
+  concluirEventoCalendario(plantaId: string, eventoId: string, dataRealizada: string, observacao?: string): Observable<EventoCalendarioItem> {
+    return this.http.post<EventoCalendarioItem>(`${this.apiUrl}/plantas/${plantaId}/calendario/${eventoId}/concluir`, { dataRealizada, observacao }, { headers: this.defaultHeaders });
+  }
+
+  getStatusCalendario(plantaId: string): Observable<{ recalibrandoIa: boolean }> {
+    return this.http.get<{ recalibrandoIa: boolean }>(`${this.apiUrl}/plantas/${plantaId}/calendario/status`, { headers: this.defaultHeaders });
+  }
+
+  getConquistas(): Observable<ConquistaProgresso[]> {
+    return this.http.get<ConquistaProgresso[]>(`${this.apiUrl}/conquistas`, { headers: this.defaultHeaders });
+  }
+
+  getNotificacoes(): Observable<NotificacaoItem[]> {
+    return this.http.get<NotificacaoItem[]>(`${this.apiUrl}/plantas/notificacoes`, { headers: this.defaultHeaders });
+  }
+
+  getFotosPlanta(plantaId: string): Observable<PlantaFotoItem[]> {
+    return this.http.get<PlantaFotoItem[]>(`${this.apiUrl}/plantas/${plantaId}/fotos`, { headers: this.defaultHeaders });
+  }
+
+  adicionarFotoPlanta(plantaId: string, url: string, dataFoto?: string, legenda?: string): Observable<PlantaFotoItem> {
+    return this.http.post<PlantaFotoItem>(`${this.apiUrl}/plantas/${plantaId}/fotos`, { url, dataFoto, legenda }, { headers: this.defaultHeaders });
+  }
+
+  removerFotoPlanta(plantaId: string, fotoId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/plantas/${plantaId}/fotos/${fotoId}`, { headers: this.defaultHeaders });
+  }
+
+  getClima(plantaId: string): Observable<ClimaPlantaResponse> {
+    return this.http.get<ClimaPlantaResponse>(`${this.apiUrl}/plantas/${plantaId}/clima`, { headers: this.defaultHeaders });
   }
 
   createPlanta(request: CreatePlantaRequest): Observable<Planta> {
@@ -156,5 +210,57 @@ export class AgroTechService {
   analisarSaudeDiario(plantaId: string, etapaNumero: number, payload: any): Observable<AnaliseSaudeIaResponse> {
     console.log(`[AgroTechService] 🩺 Solicitando análise fitossanitária de saúde para PlantaId=${plantaId} Etapa=${etapaNumero}`);
     return this.http.post<AnaliseSaudeIaResponse>(`${this.apiUrl}/plantas/${plantaId}/diario/${etapaNumero}/analisar`, payload, { headers: this.defaultHeaders });
+  }
+
+  // ─── Gamificação — Trilha do Cultivador (API_CONTRACTS §5 e §6) ──────────────
+
+  /** Estado completo da gamificação da planta (§5.1). */
+  getGamificacaoPlanta(plantaId: string): Observable<GamificacaoPlantaResponse> {
+    return this.http.get<GamificacaoPlantaResponse>(`${this.apiUrl}/plantas/${plantaId}/gamificacao`, { headers: this.defaultHeaders });
+  }
+
+  /** Geração de conquistas por IA com fallback (§5.2). 409 = já gerada (ERR-GAM-005). */
+  gerarGamificacao(plantaId: string): Observable<GerarGamificacaoResponse> {
+    console.log(`[AgroTechService] ✨ Gerando gamificação da planta ID=${plantaId}`);
+    return this.http.post<GerarGamificacaoResponse>(`${this.apiUrl}/plantas/${plantaId}/gamificacao/gerar`, {}, { headers: this.defaultHeaders });
+  }
+
+  /** Transição de estágio do ciclo de vida com validação de tempo mínimo (§5.3). */
+  avancarEstagio(plantaId: string, novoEstagio: EstagioCiclo): Observable<TransicaoEstagioResponse> {
+    console.log(`[AgroTechService] 🪜 Avançando estágio da planta ID=${plantaId} para ${novoEstagio}`);
+    return this.http.post<TransicaoEstagioResponse>(`${this.apiUrl}/plantas/${plantaId}/estagio`, { novoEstagio }, { headers: this.defaultHeaders });
+  }
+
+  /** Confirmação de ação de manejo a partir de alerta (§5.4). */
+  confirmarManejo(plantaId: string, alertaId: number): Observable<ManejoResponse> {
+    console.log(`[AgroTechService] 🧑‍🌾 Confirmando manejo da planta ID=${plantaId} (alerta ${alertaId})`);
+    return this.http.post<ManejoResponse>(`${this.apiUrl}/plantas/${plantaId}/manejo`, { alertaId }, { headers: this.defaultHeaders });
+  }
+
+  /** Cuidado manual do dia para plantas sem sensor — idempotente por dia (§5.8, CR-001). */
+  registrarCuidado(plantaId: string): Observable<RegistroCuidadoResponse> {
+    console.log(`[AgroTechService] 🤲 Registrando cuidado manual da planta ID=${plantaId}`);
+    return this.http.post<RegistroCuidadoResponse>(`${this.apiUrl}/plantas/${plantaId}/cuidado`, {}, { headers: this.defaultHeaders });
+  }
+
+  /** Registro de transplante/remanejo e abertura da janela de verificação de 7 dias (§5.5). */
+  registrarTransplante(plantaId: string, observacao?: string): Observable<TransplanteResponse> {
+    return this.http.post<TransplanteResponse>(`${this.apiUrl}/plantas/${plantaId}/transplante`, { observacao }, { headers: this.defaultHeaders });
+  }
+
+  /** Arquivamento da planta (gamificação vai para histórico, XP preservado — §5.6). */
+  arquivarPlanta(plantaId: string): Observable<void> {
+    console.log(`[AgroTechService] 🗄️ Arquivando planta ID=${plantaId}`);
+    return this.http.post<void>(`${this.apiUrl}/plantas/${plantaId}/arquivar`, {}, { headers: this.defaultHeaders });
+  }
+
+  /** Lista completa das conquistas da planta, bloqueadas e concluídas (§5.7). */
+  getConquistasDaPlanta(plantaId: string): Observable<ConquistaLista[]> {
+    return this.http.get<ConquistaLista[]>(`${this.apiUrl}/plantas/${plantaId}/conquistas`, { headers: this.defaultHeaders });
+  }
+
+  /** XP do Cultivador + conquistas de coleção do jardim (§6.1). */
+  getGamificacaoJardim(): Observable<JardimGamificacaoResponse> {
+    return this.http.get<JardimGamificacaoResponse>(`${this.apiUrl}/jardim/gamificacao`, { headers: this.defaultHeaders });
   }
 }

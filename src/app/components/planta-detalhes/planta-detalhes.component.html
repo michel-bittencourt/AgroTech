@@ -7,53 +7,626 @@
   (change)="onImagemSelecionada($event)"
 />
 
-<!-- Top Hero Header -->
-<header class="bg-agrotech-primary text-white py-4 shadow-sm mb-4">
-  <div class="container">
-    <h1 class="h3 mb-0 fw-bold">
-      <i class="fa-solid fa-seedling me-2"></i> {{ planta?.apelidoLote || 'Detalhes da Planta' }}
-    </h1>
-    <p class="mb-0 text-white-50 small">
-      <i class="fa-solid fa-leaf me-1"></i> {{ planta?.especieNomePopular }}
-      <span *ngIf="planta?.especieNomeCientifico" class="fst-italic">({{ planta?.especieNomeCientifico }})</span>
-    </p>
-  </div>
-</header>
+<!-- Input de arquivo oculto para a galeria de evolução -->
+<input
+  #fotoGaleriaInput
+  type="file"
+  accept="image/jpeg,image/png,image/webp,image/gif"
+  class="d-none"
+  (change)="onFotoGaleriaSelecionada($event)"
+/>
 
 <div class="container pb-5" *ngIf="!isLoading && planta">
-  <!-- Bloco de Ações Rápidas -->
-  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
-    <div class="d-flex justify-content-between align-items-center mobile-stack-header">
-      <div>
-        <h6 class="fw-bold mb-1 text-dark"><i class="fa-solid fa-bolt text-warning me-2"></i>Ações Rápidas</h6>
-        <span class="text-muted small">
-          {{ isEditing ? 'Modo de Edição — Altere as etapas da Wiki e os parâmetros de cultivo' : 'Modo de Leitura — Wiki completa de cultivo e parâmetros agronômicos' }}
-        </span>
-      </div>
-      <div class="d-flex gap-2 mobile-stack-actions">
-        <ng-container *ngIf="!isEditing">
-          <button type="button" class="btn btn-outline-primary px-4 rounded-pill fw-medium" (click)="iniciarEdicao()">
-            <i class="fa-solid fa-pen-to-square me-1"></i> Editar
-          </button>
-          <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium" (click)="confirmarExclusao()">
-            <i class="fa-solid fa-trash-can me-1"></i> Excluir
-          </button>
-          <button type="button" class="btn btn-outline-secondary px-4 rounded-pill fw-medium" (click)="voltar()">
-            <i class="fa-solid fa-arrow-left me-1"></i> Voltar
-          </button>
-        </ng-container>
+  <!-- Cabeçalho da página: identidade + ações (absorve o antigo card "Ações Rápidas") -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo">
+        <i class="fa-solid fa-leaf text-agrotech-primary"></i> {{ planta.apelidoLote }}
+      </h1>
+      <p class="page-subtitulo">
+        {{ planta.especieNomePopular }}
+        <span *ngIf="planta.especieNomeCientifico" class="fst-italic">({{ planta.especieNomeCientifico }})</span>
+      </p>
+    </div>
+    <div class="page-acoes">
+      <ng-container *ngIf="!isEditing">
+        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-medium" (click)="iniciarEdicao()">
+          <i class="fa-solid fa-pen-to-square me-1"></i> Editar
+        </button>
+        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-medium" (click)="confirmarExclusao()">
+          <i class="fa-solid fa-trash-can me-1"></i> Excluir
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium" (click)="voltar()">
+          <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </button>
+      </ng-container>
 
-        <ng-container *ngIf="isEditing">
-          <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="cancelarEdicao()">Cancelar</button>
-          <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvar()" [disabled]="isSaving">
-            <i class="fa-solid" [ngClass]="isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'" class="me-1"></i> {{ isSaving ? 'Salvando...' : 'Salvar' }}
+      <ng-container *ngIf="isEditing">
+        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" (click)="cancelarEdicao()">Cancelar</button>
+        <button type="button" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm" (click)="salvar()" [disabled]="isSaving">
+          <i class="fa-solid" [ngClass]="isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'" class="me-1"></i> {{ isSaving ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </ng-container>
+    </div>
+  </div>
+
+  <!-- ═══ CARD-RESUMO (sempre visível): planta + estágio + XP/streak + barras compactas ═══ -->
+  <div class="section-card">
+    @if (isLoadingGamificacao) {
+      <div class="skeleton mb-3"></div>
+      <div class="skeleton skeleton-curto"></div>
+    }
+
+    @if (!isLoadingGamificacao) {
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <img *ngIf="imagemExibicaoUrl" [src]="imagemExibicaoUrl" class="resumo-foto" alt="Foto de {{ planta.apelidoLote }}" />
+        <div *ngIf="!imagemExibicaoUrl" class="resumo-foto resumo-foto-vazia">
+          <i class="fa-solid fa-seedling"></i>
+        </div>
+
+        <div class="flex-grow-1">
+          <div class="fw-bold fs-4 text-dark lh-sm">{{ planta.apelidoLote }}</div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+            @if (estagioAtualItem) {
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small">
+                <i class="fa-solid me-1" [ngClass]="estagioAtualIcone"></i> {{ estagioAtualLabel }}
+              </span>
+            }
+            @if (gamificacao) {
+              <span class="badge bg-light text-dark border rounded-pill px-3 py-2 small">
+                <i class="fa-solid fa-star text-warning me-1"></i> Nível {{ gamificacao.nivel }}
+              </span>
+            }
+            @if (estaArquivada) {
+              <span class="badge bg-secondary rounded-pill px-3 py-2 small">
+                <i class="fa-solid fa-box-archive me-1"></i> Histórico
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-3" />
+
+      <!-- XP / streak + multiplicador (RN-011, RN-014) -->
+      <div class="d-flex flex-wrap align-items-center gap-4">
+        <div>
+          <span class="text-muted small d-block">XP Total</span>
+          <strong class="fs-5 text-dark">{{ gamificacao?.xpTotal ?? 0 }}</strong>
+        </div>
+        <div>
+          <span class="text-muted small d-block">Sequência de Saúde</span>
+          <strong class="text-dark">🔥 {{ gamificacao?.streakDiasAtual ?? 0 }} dias na faixa ideal</strong>
+        </div>
+        @if (multiplicadorExibido && multiplicadorExibido > 1) {
+          <div>
+            <span class="text-muted small d-block">Multiplicador</span>
+            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">x{{ multiplicadorExibido }}</span>
+          </div>
+        }
+        @if (xpDestaque) {
+          <span class="xp-flutuante">+{{ xpDestaque }} XP</span>
+        }
+      </div>
+
+      @if (selosRecentes.length) {
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          @for (selo of selosRecentes; track selo.id) {
+            <span class="badge bg-success text-white rounded-pill px-3 py-2 small">
+              <i class="fa-solid fa-award me-1"></i> Selo: {{ selo.titulo }} (+{{ selo.xpRecompensa }} XP)
+            </span>
+          }
+        </div>
+      }
+
+      <!-- Barras de saúde compactas (RN-014, RN-021) -->
+      <div class="mt-3">
+        @if (gamificacao?.sensorVinculado) {
+          <div class="row g-2">
+            @for (metrica of metricasSaude; track metrica.chave) {
+              <div class="col-12 col-md-4">
+                <div class="saude-compacta p-2 bg-light rounded-3">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-muted" [title]="faixaSaudeTexto(metrica.chave)">
+                      <i class="fa-solid me-1" [ngClass]="[metrica.icone]"></i> {{ metrica.label }}
+                      <strong class="text-dark ms-1">{{ valorSaudeTexto(metrica.chave) }}</strong>
+                    </span>
+                    @if (metricaNaFaixa(metrica.chave) === true) {
+                      <i class="fa-solid fa-circle-check text-success" title="Na faixa ideal"></i>
+                    }
+                    @if (metricaNaFaixa(metrica.chave) === false) {
+                      <i class="fa-solid fa-triangle-exclamation text-warning" title="Fora da faixa ideal"></i>
+                    }
+                  </div>
+                  <div class="progress saude-progress">
+                    <div class="progress-bar saude-progress-fill"
+                         [ngClass]="metricaNaFaixa(metrica.chave) === false ? 'bg-warning' : 'bg-success'"
+                         [style.width.%]="larguraSaude(metrica.chave)"></div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <!-- Modo Manual de Saúde (CR-001 — RN-023/024/025) -->
+          <div class="cuidados-semana">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <span class="fw-semibold small text-dark">
+                <i class="fa-solid fa-hand-holding-heart text-agrotech-primary me-1"></i> Cuidados da semana
+              </span>
+              <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">
+                {{ gamificacao?.cuidadosSemana?.confirmados ?? 0 }}/7 confirmados
+              </span>
+            </div>
+
+            <div class="d-flex gap-2 mb-2" role="list" aria-label="Últimos 7 dias de cuidados confirmados">
+              @for (dia of dotsCuidados(); track $index) {
+                <span class="dot-cuidado" [class.preenchido]="dia" role="listitem" [title]="nomeDiaCuidado($index)">
+                  @if (dia) {
+                    <i class="fa-solid fa-check"></i>
+                  }
+                </span>
+              }
+            </div>
+
+            <div class="text-muted small mb-3">
+              <i class="fa-solid fa-satellite-dish me-1"></i> Sensor não vinculado — registrando cuidados manualmente
+            </div>
+
+            <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" (click)="registrarCuidado()"
+                    [disabled]="cuidadoHojeFeito || isRegistrandoCuidado || estaArquivada"
+                    [title]="cuidadoHojeFeito ? 'Cuidado do dia já registrado' : ''">
+              <i class="fa-solid" [ngClass]="isRegistrandoCuidado ? 'fa-circle-notch spin-icon me-1' : 'fa-hand-holding-heart me-1'"></i>
+              {{ isRegistrandoCuidado ? 'Registrando...' : 'Registrar cuidado' }}
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Erro de gamificação (catálogo ERR-GAM) -->
+      @if (erroGamificacao) {
+        <div class="alert alert-danger py-2 px-3 rounded-3 small mt-3 mb-0">
+          <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ erroGamificacao }}
+        </div>
+      }
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Trilha do ciclo de vida (aberta) ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().trilha">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('trilha')" [attr.aria-expanded]="secoesAbertas().trilha" aria-controls="secao-trilha">
+      <i class="fa-solid fa-route text-agrotech-primary"></i>
+      <span>Trilha do ciclo de vida</span>
+      <span class="text-muted fw-normal small">{{ estagioAtualLabel }}{{ proximoEstagioLabel ? ' → ' + proximoEstagioLabel : '' }}</span>
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().trilha) {
+      <div class="acordeao-corpo" id="secao-trilha">
+        <ng-container *ngTemplateOutlet="blocoTrilha"></ng-container>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Conquistas (aberta) com filtro por tier ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().conquistas">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('conquistas')" [attr.aria-expanded]="secoesAbertas().conquistas" aria-controls="secao-conquistas">
+      <i class="fa-solid fa-trophy text-warning"></i>
+      <span>Conquistas</span>
+      @if (conquistas.length) {
+        <span class="text-muted fw-normal small">{{ concluidasCount() }}/{{ conquistas.length }} concluídas</span>
+      }
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().conquistas) {
+      <div class="acordeao-corpo position-relative" id="secao-conquistas">
+        <ng-container *ngTemplateOutlet="blocoConquistas"></ng-container>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Saúde detalhada (fechada) ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().saude">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('saude')" [attr.aria-expanded]="secoesAbertas().saude" aria-controls="secao-saude">
+      <i class="fa-solid fa-heart-pulse text-danger"></i>
+      <span>Saúde detalhada</span>
+      <span class="text-muted fw-normal small">valores atuais e faixas ideais por métrica</span>
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().saude) {
+      <div class="acordeao-corpo" id="secao-saude">
+        @if (gamificacao?.sensorVinculado) {
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr class="small text-muted">
+                  <th>Métrica</th>
+                  <th>Valor atual</th>
+                  <th>Faixa ideal</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (metrica of metricasSaude; track metrica.chave) {
+                  <tr>
+                    <td class="small fw-semibold text-dark"><i class="fa-solid me-2" [ngClass]="[metrica.icone]"></i>{{ metrica.label }}</td>
+                    <td class="small">{{ valorSaudeTexto(metrica.chave) }}</td>
+                    <td class="small text-muted">{{ faixaSaudeTexto(metrica.chave) || 'Não informada' }}</td>
+                    <td>
+                      @if (metricaNaFaixa(metrica.chave) === true) {
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">Na faixa</span>
+                      }
+                      @if (metricaNaFaixa(metrica.chave) === false) {
+                        <span class="badge bg-warning text-dark rounded-pill small">Fora da faixa</span>
+                      }
+                      @if (metricaNaFaixa(metrica.chave) === null) {
+                        <span class="text-muted small">Sem dados</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="alert alert-info py-2 px-3 rounded-3 small mb-0">
+            <i class="fa-solid fa-satellite-dish me-1"></i> Sensor não vinculado — progride por jornada e ações manuais
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Ações (fechada — zona de risco discreta) ═══ -->
+  <div class="acordeao acordeao-acoes" [class.aberto]="secoesAbertas().acoes">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('acoes')" [attr.aria-expanded]="secoesAbertas().acoes" aria-controls="secao-acoes">
+      <i class="fa-solid fa-hand-pointer text-agrotech-primary"></i>
+      <span>Ações</span>
+      <span class="text-muted fw-normal small">transplante e arquivamento</span>
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().acoes) {
+      <div class="acordeao-corpo" id="secao-acoes">
+        <p class="text-muted small mb-3">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Ações destrutivas afetam o histórico da planta — o XP conquistado é sempre preservado.
+        </p>
+
+        <!-- Janela de verificação do transplante (RN-018) -->
+        @if (transplanteInfo) {
+          <div class="alert alert-success py-2 px-3 rounded-3 small mb-3">
+            <i class="fa-solid fa-shuffle me-1"></i> Transplante registrado — verificação até <strong>{{ dataHora(transplanteInfo.verificacaoAte) }}</strong>
+            (selo previsto: {{ transplanteInfo.seloPrevisto }})
+          </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2">
+          <button type="button" class="btn btn-outline-primary rounded-pill px-4" (click)="abrirConfirmTransplante()" [disabled]="estaArquivada">
+            <i class="fa-solid fa-shuffle me-1"></i> Registrar transplante
           </button>
-        </ng-container>
+          <button type="button" class="btn btn-outline-danger rounded-pill px-4" (click)="abrirConfirmArquivar()" *ngIf="!estaArquivada">
+            <i class="fa-solid fa-box-archive me-1"></i> Arquivar planta
+          </button>
+          @if (estaArquivada) {
+            <span class="badge bg-secondary rounded-pill px-3 py-2 align-self-center">
+              <i class="fa-solid fa-box-archive me-1"></i> Histórico — ações desabilitadas
+            </span>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Templates compartilhados das seções (conteúdo completo da gamificação) -->
+  <ng-template #blocoTrilha>
+    @if (gamificacao) {
+      <!-- Stepper da Trilha do Ciclo de Vida — 7 estágios (RN-009, RN-010) -->
+      <div class="trilha-stepper d-flex justify-content-between mb-4">
+        @for (item of trilhaOrdenada; track item.estagio) {
+          <div class="trilha-step" [class.concluido]="item.concluido" [class.atual]="item.atual" [class.bloqueado]="!item.concluido && !item.atual">
+            <div class="trilha-bolha" [title]="item.concluido ? 'Estágio concluído' : (item.atual ? (podeAvancar(item) ? 'Estágio atual' : contagemDoEstagio(item)) : 'Bloqueado — conclua os estágios anteriores')">
+              <i class="fa-solid" [ngClass]="item.concluido ? 'fa-check' : (item.atual ? estagioIcone(item.estagio) : 'fa-lock')"></i>
+            </div>
+            <div class="trilha-label small">{{ estagioLabel(item.estagio) }}</div>
+          </div>
+        }
+      </div>
+
+      <!-- Ação: Avançar estágio — habilitado só quando podeTransicionarEm já passou (RN-010) -->
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3 p-3 bg-light rounded-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          @if (estagioAtualItem; as item) {
+            @if (!podeAvancar(item)) {
+              <span class="badge bg-warning text-dark rounded-pill px-3 py-2" [title]="contagemDoEstagio(item)">
+                <i class="fa-solid fa-hourglass-half me-1"></i> {{ contagemDoEstagio(item) }}
+              </span>
+            } @else if (proximoEstagioLabel) {
+              <span class="text-success small fw-semibold">
+                <i class="fa-solid fa-circle-check me-1"></i> Tempo mínimo cumprido — próximo: {{ proximoEstagioLabel }}
+              </span>
+            } @else {
+              <span class="text-muted small"><i class="fa-solid fa-flag-checkered me-1"></i> Trilha concluída até a colheita!</span>
+            }
+          } @else {
+            <span class="text-muted small"><i class="fa-solid fa-hourglass-start me-1"></i> Aguardando trilha do ciclo de vida...</span>
+          }
+        </div>
+        <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" (click)="avancarEstagio()"
+                [disabled]="!estagioAtualItem || !podeAvancar(estagioAtualItem) || isAvancandoEstagio || estaArquivada"
+                [title]="tituloBotaoAvancar">
+          <i class="fa-solid" [ngClass]="isAvancandoEstagio ? 'fa-circle-notch spin-icon me-1' : 'fa-forward me-1'"></i>
+          {{ isAvancandoEstagio ? 'Avançando...' : 'Avançar estágio' }}
+        </button>
+      </div>
+    }
+  </ng-template>
+
+  <ng-template #blocoConquistas>
+    <!-- Filtro por tier (chips com cores fixas --tier-*) -->
+    @if (conquistas.length) {
+      <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <button type="button"
+                class="chip-tier"
+                [class.ativo]="tierFiltro() === null"
+                (click)="alternarFiltroTier(null)">
+          <i class="fa-solid fa-layer-group"></i> Todos
+        </button>
+        @for (tier of ORDEM_TIERS; track tier) {
+          @if (contagemPorTier(tier) > 0) {
+            <button type="button"
+                    class="chip-tier"
+                    [class.ativo]="tierFiltro() === tier"
+                    (click)="alternarFiltroTier(tier)"
+                    [attr.aria-pressed]="tierFiltro() === tier">
+              <span class="chip-dot" [style.backgroundColor]="TIER_VISUAL[tier].cor"></span>
+              {{ TIER_VISUAL[tier].label }}
+              <span class="text-muted">{{ contagemPorTier(tier) }}</span>
+            </button>
+          }
+        }
+      </div>
+    }
+
+    <!-- Overlay de Loading de geração (RN-017 — texto exato da UI_SPEC) -->
+    @if (isGerandoGamificacao) {
+      <div class="overlay-gerando d-flex flex-column align-items-center justify-content-center gap-2">
+        <div class="spinner-border text-success" role="status"></div>
+        <span class="fw-semibold text-dark">Gerando gamificação da sua planta...</span>
+      </div>
+    }
+
+    <!-- Grid agrupado por tier com cores fixas (UI_SPEC §6) -->
+    @if (conquistas.length) {
+      @for (grupo of conquistasAgrupadas(); track grupo.tier) {
+        <div class="mb-3">
+          <div class="tier-header small fw-bold mb-2" [style.color]="TIER_VISUAL[grupo.tier].cor">
+            <i class="fa-solid me-1" [ngClass]="TIER_VISUAL[grupo.tier].icone"></i>
+            {{ TIER_VISUAL[grupo.tier].label }}
+          </div>
+          <div class="conquistas-tier-grid">
+            @for (c of grupo.itens; track c.id) {
+              <div class="conquista-medalha"
+                   [class.concluida]="c.status === 'Concluida'"
+                   [class.epica]="c.tier === 'Epico'"
+                   [class.lendaria]="c.tier === 'Lendario'"
+                   [title]="c.descricao || c.titulo">
+                <div class="medalha-icone" [style.color]="TIER_VISUAL[c.tier].cor" [style.borderColor]="TIER_VISUAL[c.tier].cor">
+                  <i class="fa-solid" [ngClass]="c.status === 'Concluida' ? TIER_VISUAL[c.tier].icone : 'fa-lock'"></i>
+                </div>
+                <div class="medalha-info">
+                  <div class="medalha-titulo">{{ c.titulo }}</div>
+                  <div class="medalha-meta">
+                    <span class="badge tier-badge" [style.backgroundColor]="TIER_VISUAL[c.tier].cor">{{ TIER_VISUAL[c.tier].label }}</span>
+                    <span class="medalha-xp">+{{ c.xpRecompensa }} XP</span>
+                    @if (c.geradaPorIa) {
+                      <span class="badge bg-light text-dark border rounded-pill small">IA</span>
+                    }
+                  </div>
+                  @if (c.status === 'Concluida' && c.dataDesbloqueio) {
+                    <div class="medalha-status text-success"><i class="fa-solid fa-check me-1"></i>{{ dataHora(c.dataDesbloqueio) }}</div>
+                  } @else {
+                    <div class="medalha-status text-muted">Bloqueada</div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    <!-- Resumo quando conquistas já existem mas a lista não está carregada (409 — ERR-GAM-005) -->
+    @if (!conquistas.length && gamificacao?.conquistasResumo && gamificacao.conquistasResumo.total > 0) {
+      <div class="p-3 bg-light rounded-3 d-flex flex-wrap align-items-center gap-3">
+        <span class="small text-dark fw-semibold"><i class="fa-solid fa-circle-info text-info me-1"></i> Conquistas já geradas para esta planta:</span>
+        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 small">
+          {{ gamificacao.conquistasResumo.concluidas }}/{{ gamificacao.conquistasResumo.total }} concluídas
+        </span>
+        @for (tier of ORDEM_TIERS; track tier) {
+          @if (gamificacao.conquistasResumo.porTier[tier]) {
+            <span class="badge rounded-pill px-3 py-2 small tier-badge" [style.backgroundColor]="TIER_VISUAL[tier].cor">
+              {{ TIER_VISUAL[tier].label }}: {{ gamificacao.conquistasResumo.porTier[tier] }}
+            </span>
+          }
+        }
+      </div>
+    }
+
+    <!-- Estado vazio (UI_SPEC §4.5): mensagem + botão "Gerar agora" -->
+    @if (!conquistas.length && !isGerandoGamificacao && gamificacao?.conquistasResumo && gamificacao.conquistasResumo.total === 0) {
+      <div class="empty-state">
+        <i class="fa-solid fa-medal empty-icone"></i>
+        <p class="empty-texto mb-3">Conquistas serão geradas ao vincular um sensor ou completar o cadastro</p>
+        <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" (click)="gerarAgora()" [disabled]="isGerandoGamificacao">
+          <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Gerar agora
+        </button>
+      </div>
+    }
+  </ng-template>
+
+  <!-- 📅 Calendário Preditivo de Cultivo -->
+  <div class="section-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-calendar-days text-success me-2"></i>Calendário Preditivo de Cultivo</h6>
+        <span class="text-muted small">Marcos gerados pela IA e recalibrados pelas suas datas reais</span>
+      </div>
+      <span *ngIf="calendario.length" class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill small">
+        {{ calendario.filter(e => e.concluido).length }}/{{ calendario.length }} concluídos
+      </span>
+    </div>
+
+    <div *ngIf="isRecalibrandoIa" class="alert alert-info py-2 px-3 rounded-3 small d-flex align-items-center gap-2 mb-3">
+      <i class="fa-solid fa-brain text-primary"></i>
+      A IA está recalibrando a timeline com base no seu histórico e diário de bordo — as datas futuras serão refinadas em instantes.
+    </div>
+
+    <!-- Sem calendário: escolher etapa inicial -->
+    <div *ngIf="!calendario.length && !isLoadingCalendario" class="row g-2 align-items-end">
+      <div class="col-12 col-md-7">
+        <label class="form-label small fw-bold text-secondary mb-1">Por onde você quer começar a jornada?</label>
+        <select class="form-select" [(ngModel)]="etapaSelecionada" name="etapaInicial">
+          <option *ngFor="let etapa of etapasIniciais" [value]="etapa.chave">{{ etapa.label }}</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-5">
+        <button type="button" class="btn btn-success w-100 rounded-pill fw-semibold" (click)="gerarCalendarioAgora()" [disabled]="isGerandoCalendario">
+          <i [class]="isGerandoCalendario ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-wand-magic-sparkles me-1'"></i>
+          {{ isGerandoCalendario ? 'Gerando calendário pela IA...' : 'Gerar calendário preditivo' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Ações de hoje (atrasadas + hoje) -->
+    <div *ngIf="eventosAcoesHoje.length" class="p-3 bg-warning-subtle border border-warning-subtle rounded-3 mb-3">
+      <div class="fw-bold small text-dark mb-2"><i class="fa-solid fa-bell text-warning me-1"></i> Ações de hoje</div>
+      <div *ngFor="let ev of eventosAcoesHoje" class="d-flex align-items-center justify-content-between flex-wrap gap-2 py-1">
+        <div class="small">
+          <span class="fw-semibold text-dark">{{ ev.titulo }}</span>
+          <span class="text-muted ms-2">previsto para {{ ev.dataPrevista | date:'dd/MM' }}</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-success rounded-pill px-3" (click)="concluirEvento(ev)" [disabled]="isConcluindoEvento === ev.id">
+          <i [class]="isConcluindoEvento === ev.id ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-check me-1'"></i> Concluir
+        </button>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div *ngIf="calendario.length" class="timeline-cultivo">
+      <div *ngFor="let ev of calendario" class="timeline-item" [ngClass]="statusEvento(ev)">
+        <div class="timeline-marcador">
+          <i [ngClass]="statusEvento(ev) === 'concluido' ? 'fa-solid fa-check' : (statusEvento(ev) === 'atrasado' ? 'fa-solid fa-triangle-exclamation' : (statusEvento(ev) === 'hoje' ? 'fa-solid fa-location-dot' : 'fa-regular fa-circle'))"></i>
+        </div>
+        <div class="timeline-conteudo flex-grow-1">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+              <span class="fw-semibold" [class.text-decoration-line-through]="ev.concluido">{{ ev.titulo }}</span>
+              <span class="badge ms-2 px-2 py-0 rounded-pill" style="font-size: 10px;" [ngClass]="ev.tipo === 'Tarefa' ? 'bg-info-subtle text-info border border-info-subtle' : 'bg-success-subtle text-success border border-success-subtle'">{{ ev.tipo }}</span>
+              <span *ngIf="ev.recorrenciaDias" class="badge ms-1 px-2 py-0 rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 10px;" title="Evento recorrente — ao concluir, a próxima ocorrência é criada automaticamente">
+                <i class="fa-solid fa-repeat me-1"></i>a cada {{ ev.recorrenciaDias }}d
+              </span>
+              <span *ngIf="proximoEventoId() === ev.id && !ev.concluido" class="badge bg-primary text-white ms-1 px-2 py-0 rounded-pill" style="font-size: 10px;">próximo</span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="small" [ngClass]="statusEvento(ev) === 'atrasado' ? 'text-danger fw-semibold' : 'text-muted'">
+                {{ ev.concluido ? 'Feito em ' + (ev.dataRealizada | date:'dd/MM') : 'Previsto: ' + (ev.dataPrevista | date:'dd/MM') }}
+              </span>
+              <button *ngIf="!ev.concluido" type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" (click)="concluirEvento(ev)" [disabled]="isConcluindoEvento === ev.id">
+                <i [class]="isConcluindoEvento === ev.id ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-check me-1'"></i> Concluir
+              </button>
+            </div>
+          </div>
+          <div class="small text-muted" *ngIf="ev.descricao">{{ ev.descricao }}</div>
+          <div class="small text-secondary fst-italic" *ngIf="ev.observacoes"><i class="fa-solid fa-note-sticky me-1"></i>{{ ev.observacoes }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="isLoadingCalendario" class="text-center text-muted small py-3">
+      <i class="fa-solid fa-circle-notch spin-icon me-1"></i> Carregando calendário...
+    </div>
+
+    <!-- Regenerar -->
+    <div *ngIf="calendario.length" class="d-flex justify-content-end mt-3">
+      <div class="d-flex gap-2 align-items-center">
+        <select class="form-select form-select-sm" [(ngModel)]="etapaSelecionada" name="etapaRegenerar" style="max-width: 240px;">
+          <option *ngFor="let etapa of etapasIniciais" [value]="etapa.chave">{{ etapa.label }}</option>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" (click)="gerarCalendarioAgora()" [disabled]="isGerandoCalendario">
+          <i class="fa-solid fa-rotate-right me-1"></i> Regenerar a partir desta etapa
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- MODO LEITURA (READ-ONLY) -->
+    <!-- 🌤️ Clima na região (informativo — respeita área coberta) -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white" *ngIf="clima">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div>
+          <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-cloud-sun text-info me-2"></i>Clima na região{{ clima.uf ? ' (' + clima.uf + ')' : '' }}</h6>
+          <span class="text-muted small">Previsão para os próximos 3 dias <span *ngIf="clima.areaCoberta === true">· planta em área coberta — chuva não a afeta diretamente</span></span>
+        </div>
+      </div>
+
+      <div *ngIf="!clima.disponivel" class="text-muted small py-1">{{ clima.mensagem }}</div>
+
+      <div class="d-flex gap-3 flex-wrap" *ngIf="clima.disponivel && clima.dias">
+        <div *ngFor="let dia of clima.dias" class="clima-dia text-center">
+          <div class="fw-bold small">{{ dia.data | date:'EEE dd/MM' }}</div>
+          <div class="fs-5">🌡️ {{ dia.tempMin }}°–{{ dia.tempMax }}°C</div>
+          <div class="small text-muted">🌧️ {{ dia.probChuva }}%</div>
+        </div>
+      </div>
+
+      <div *ngFor="let alerta of clima.alertas" class="alert alert-warning py-2 px-3 mt-2 mb-0 rounded-3 small" [class.alert-info]="clima.areaCoberta === true && alerta.startsWith('🌧️')">
+        {{ alerta }}
+      </div>
+    </div>
+
+    <!-- 📷 Galeria de Evolução -->
+    <div class="section-card">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+          <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-images text-primary me-2"></i>Galeria de Evolução</h6>
+          <span class="text-muted small">Registre fotos datadas e acompanhe a transformação da planta</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <div>
+            <label class="form-label small text-muted mb-0">Data da foto</label>
+            <input type="date" class="form-control form-control-sm" [(ngModel)]="dataFotoSelecionada" [ngModelOptions]="{standalone: true}" />
+          </div>
+          <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" (click)="abrirSeletorFotoGaleria()" [disabled]="isEnviandoFotoGaleria" style="margin-top: 14px;">
+            <i [class]="isEnviandoFotoGaleria ? 'fa-solid fa-circle-notch spin-icon me-1' : 'fa-solid fa-camera me-1'"></i>
+            {{ isEnviandoFotoGaleria ? 'Enviando...' : 'Adicionar foto' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!isLoadingFotos && fotos.length === 0" class="text-muted small text-center py-3 bg-light rounded-3 border border-dashed">
+        <i class="fa-solid fa-camera-retro me-1 opacity-50"></i> Nenhuma foto ainda — tire a primeira hoje para começar o histórico visual.
+      </div>
+
+      <div class="d-flex flex-wrap gap-3" *ngIf="fotos.length > 0">
+        <div *ngFor="let foto of fotos" class="position-relative">
+          <img [src]="urlFotoGaleria(foto.url)" alt="Foto de {{ foto.dataFoto | date:'dd/MM/yyyy' }}" class="galeria-foto shadow-sm" />
+          <span class="badge bg-dark bg-opacity-75 text-white position-absolute bottom-0 start-0 m-1 rounded-pill px-2" style="font-size: 10px;">
+            {{ foto.dataFoto | date:'dd/MM/yy' }}
+          </span>
+          <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle p-1" style="width: 22px; height: 22px; font-size: 10px; transform: translate(25%, -25%);" (click)="removerFotoGaleria(foto)" title="Remover foto">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="isLoadingFotos" class="text-center text-muted small py-3">
+        <i class="fa-solid fa-circle-notch spin-icon me-1"></i> Carregando galeria...
+      </div>
+    </div>
+
+    <!-- MODO LEITURA (READ-ONLY) -->
   <div *ngIf="!isEditing" class="row g-4">
     <!-- Visão Geral do Lote -->
     <div class="col-12 col-md-5">
@@ -477,6 +1050,50 @@
     <div class="d-flex justify-content-center gap-2 mobile-stack-actions">
       <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="cancelarExclusao()">Cancelar</button>
       <button type="button" class="btn btn-danger px-4 rounded-pill shadow-sm" (click)="executarExclusao()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação: Registrar transplante (RN-018) -->
+<div *ngIf="showConfirmTransplante" class="modal-overlay position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3">
+  <div class="card border-0 shadow-lg rounded-4 p-4 bg-white modal-box">
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <i class="fa-solid fa-shuffle fa-2x text-primary"></i>
+      <h5 class="fw-bold text-dark mb-0">Registrar transplante</h5>
+    </div>
+    <p class="text-muted small">
+      O registro inicia a janela de verificação de 7 dias. Se a telemetria permanecer nas faixas ideais por 7 dias contínuos,
+      o selo "Transplante bem-sucedido" será concedido.
+    </p>
+    <div class="mb-4">
+      <label class="form-label small fw-bold text-secondary">Observação (opcional)</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="observacaoTransplante" name="observacaoTransplante" placeholder="Ex: do vaso pequeno para o canteiro"></textarea>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mobile-stack-actions">
+      <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="cancelarTransplante()">Cancelar</button>
+      <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="executarTransplante()" [disabled]="isRegistrandoTransplante">
+        <i class="fa-solid" [ngClass]="isRegistrandoTransplante ? 'fa-circle-notch spin-icon me-1' : 'fa-check me-1'"></i> Confirmar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Confirmação: Arquivar planta (RN-021) -->
+<div *ngIf="showConfirmArquivar" class="modal-overlay position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3">
+  <div class="card border-0 shadow-lg rounded-4 p-4 text-center bg-white modal-box">
+    <div class="mb-3">
+      <i class="fa-solid fa-box-archive fa-3x text-secondary"></i>
+    </div>
+    <h5 class="fw-bold text-dark">Arquivar planta</h5>
+    <p class="text-muted small mb-4">
+      A planta será movida para o histórico do jardim e as ações serão bloqueadas.
+      Todo o XP conquistado e as medalhas ficam preservados, sem punição.
+    </p>
+    <div class="d-flex justify-content-center gap-2 mobile-stack-actions">
+      <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="cancelarArquivar()">Cancelar</button>
+      <button type="button" class="btn btn-danger px-4 rounded-pill shadow-sm" (click)="executarArquivar()" [disabled]="isArquivando">
+        <i class="fa-solid" [ngClass]="isArquivando ? 'fa-circle-notch spin-icon me-1' : 'fa-check me-1'"></i> Confirmar
+      </button>
     </div>
   </div>
 </div>

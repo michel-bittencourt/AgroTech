@@ -1,11 +1,31 @@
-import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Subject, of, timeout, retry, debounceTime, distinctUntilChanged, switchMap, catchError, throwError } from 'rxjs';
+import { Subject, of, timeout, retry, debounceTime, distinctUntilChanged, switchMap, catchError, throwError, Subscription } from 'rxjs';
 import { AgroTechService } from '../../services/agrotech.service';
-import { Especie, EspecieScraped, EspecieSugestao } from '../../models/agrotech.models';
+import { Especie, EspecieScraped, EspecieSugestao, FonteColetaStatus, CultivoContexto, faixaOpcionalValida } from '../../models/agrotech.models';
 import { environment } from '../../../environments/environment';
+
+/** Campos do formData que compõem o guia de cultivo (wizard). */
+type CampoGuia =
+  | 'passo1PreparoSemente'
+  | 'passo2PreparoSolo'
+  | 'passo3SemeaduraGerminacao'
+  | 'passo4TransplanteMudas'
+  | 'passo5CrescimentoManejo'
+  | 'passo6FloracaoColheita'
+  | 'cuidadosDiaADia';
+
+interface PassoGuia {
+  campo: CampoGuia;
+  numero: number;
+  titulo: string;
+  icone: string;
+  iaKeys: string[];
+  oficialKeys: string[];
+  placeholder: string;
+}
 
 @Component({
   selector: 'app-planta-cadastro',
@@ -51,6 +71,7 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
   progressoEtapa = '';
   progressoFontes = '';
   tempoEstimado = 120;
+  relatorioFontes: FonteColetaStatus[] = [];
 
   get tempoDecorridoDisplay(): string {
     return this.tempoDecorrido.toFixed(0) + 's';
@@ -61,11 +82,137 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     return restante.toFixed(0) + 's';
   }
 
+  /** Faixa de luminosidade: quando ambos preenchidos, Min <= Max (UI_SPEC §3.3 — RN-005/RN-008). */
+  get luminosidadeRangeInvalida(): boolean {
+    return !faixaOpcionalValida(this.formData.luminosidadeMin, this.formData.luminosidadeMax);
+  }
+
+  // ─── Wizard do Guia de Cultivo ───────────────────────────────────────────────
+  passosGuia: PassoGuia[] = [
+    {
+      campo: 'passo1PreparoSemente',
+      numero: 1,
+      titulo: 'Na Loja — Escolha da Semente & Primeiros Cuidados',
+      icone: 'fa-cart-shopping',
+      iaKeys: ['passo1PreparoSemente'],
+      oficialKeys: ['passo1PreparoSemente'],
+      placeholder: '🛒 Materiais & onde comprar (ideal vs. caseiro, preço de referência, selo MAPA, validade)... 🧑‍🌾 Modo de fazer numerado... 📅 Quando fazer... ⚠️ Erros comuns... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'passo2PreparoSolo',
+      numero: 2,
+      titulo: 'Preparo do Substrato & Sementeira (Receita de Bolo)',
+      icone: 'fa-seedling',
+      iaKeys: ['passo2PreparoSolo'],
+      oficialKeys: ['passo2PreparoSolo'],
+      placeholder: '🛒 Materiais com medidas exatas (copos de requeijão, gramas, litros)... 🧑‍🌾 Receita passo a passo... 📅 Quando fazer... ⚠️ Erros comuns... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'passo3SemeaduraGerminacao',
+      numero: 3,
+      titulo: 'Semeadura & Germinação (Dia a Dia do Broto)',
+      icone: 'fa-droplet',
+      iaKeys: ['passo3SemeaduraGerminacao'],
+      oficialKeys: ['passo3SemeaduraGerminacao'],
+      placeholder: '🧑‍🌾 Profundidade exata (cm), sementes por célula, rega com borrifador... 📅 Dias até germinar e o que checar a cada dia... ⚠️ Erros comuns... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'passo4TransplanteMudas',
+      numero: 4,
+      titulo: 'Endurecimento, Transplante & Local Definitivo',
+      icone: 'fa-leaf',
+      iaKeys: ['passo6TransplanteMudas', 'passo4CuidadosBrotoDesbaste'],
+      oficialKeys: ['passo6TransplanteMudas', 'passo4CuidadosBrotoDesbaste'],
+      placeholder: '🧑‍🌾 Quando transplantar (folhas verdadeiras + altura em cm), cronograma de sol, técnica da colher para raízes... 🪴 Vaso/litros, espaçamento em cm, receita do solo definitivo... ⚠️ Erros comuns... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'passo5CrescimentoManejo',
+      numero: 5,
+      titulo: 'Crescimento — Rega, Podas, Nutrição & Defesa contra Pragas',
+      icone: 'fa-sun',
+      iaKeys: ['passo7NutricaoPoda', 'passo5AclimatizacaoVasoDefinitivo'],
+      oficialKeys: ['passo7NutricaoPoda', 'passo5AclimatizacaoVasoDefinitivo'],
+      placeholder: '🧑‍🌾 Rega (volume/frequência), poda apical, tutor... 🧪 Cronograma de adubação com doses caseiras (borra de café, casca de banana)... 🐛 Pragas comuns da espécie + receitas de defesa (sabão neutro, óleo de neem)... ⚠️ Erros comuns... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'passo6FloracaoColheita',
+      numero: 6,
+      titulo: 'Floração, Colheita & Manutenção da Produção',
+      icone: 'fa-fan',
+      iaKeys: ['passo8FloracaoColheita'],
+      oficialKeys: ['passo8FloracaoColheita'],
+      placeholder: '🌸 Como estimular floração e polinizar (se precisar)... 🧺 Sinais exatos do ponto de colheita (cor, tamanho, dias), como colher e armazenar... 🔁 Como manter produzindo (poda pós-colheita, adubação de recuperação, quando replantar)... ✅ Sinais de que deu certo...'
+    },
+    {
+      campo: 'cuidadosDiaADia',
+      numero: 7,
+      titulo: 'Rotina Diária & Diagnóstico Rápido de Problemas',
+      icone: 'fa-clipboard-check',
+      iaKeys: ['cuidadosDiaADia'],
+      oficialKeys: ['cuidadosDiaADia'],
+      placeholder: '📋 Checklist diário (manhã/tarde, 2-3 min)... 📅 Checklist semanal e mensal... 🔍 Diagnóstico rápido: folha amarela = ?, pontas secas = ?, manchas = ?, mofo = ? + ação imediata de cada sintoma...'
+    }
+  ];
+
+  passoAbertoIndex = 0;
+
+  /** Sub-seção "Ajustes avançados" (faixas ideais) da seção Condições — fechada por padrão. */
+  ajustesAvancadosAbertos = signal(false);
+
+  alternarAjustesAvancados(): void {
+    this.ajustesAvancadosAbertos.update((aberto) => !aberto);
+    this.cdr.detectChanges();
+  }
+
+  get etapaAtual(): number {
+    if (this.formData.nomePopular && this.formData.apelidoLote) {
+      return 3;
+    }
+    if (this.formData.nomePopular) {
+      return 2;
+    }
+    return 1;
+  }
+
+  abrirPasso(indice: number): void {
+    // Toggle: clicar no passo aberto fecha o bloco (-1 = todos fechados)
+    this.passoAbertoIndex = this.passoAbertoIndex === indice ? -1 : indice;
+    this.cdr.detectChanges();
+  }
+
+  proximoPasso(): void {
+    if (this.passoAbertoIndex < this.passosGuia.length - 1) {
+      this.passoAbertoIndex++;
+      this.cdr.detectChanges();
+    }
+  }
+
+  isGrupo100Ia(chaves: string[]): boolean {
+    return chaves.some((k) => this.isCampo100PercentIa(k));
+  }
+
+  isGrupoBaseOficial(chaves: string[]): boolean {
+    return chaves.every((k) => this.isCampoBaseOficial(k));
+  }
+
   termoBuscaEspecie = '';
   showDropdownSugestoes = false;
   isBuscandoSugestoes = false;
   showSelectSugestoes = false;
   sugestaoSelecionada: EspecieSugestao | null = null;
+  private sugestoesSubscription: Subscription | null = null;
+  private timerDemoraBusca: any;
+  private buscaTimerInterval: any;
+  buscaDecorridaSegundos = 0;
+  isBuscaDemorando = false;
+  private readonly limiteSegundosBuscaNormal = 45;
+
+  // Personalização do cultivo (a IA adapta o guia à região, mês, local e recipiente)
+  contexto: CultivoContexto = {};
+  ufsBrasil = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+  mesesPlantio = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  locaisPlantio = ['Vaso ou jardineira', 'Canteiro no solo', 'Horta elevada', 'Garrafa PET ou recipiente reciclado'];
+  tamanhosRecipiente = ['Pequeno (até 5 litros)', 'Médio (5 a 15 litros)', 'Grande (15 a 50 litros)', 'Muito grande (mais de 50 litros)', 'Planto direto no solo (não se aplica)'];
 
   formData = {
     apelidoLote: '',
@@ -77,6 +224,8 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     umidadeSoloMax: null as number | null,
     temperaturaMin: null as number | null,
     temperaturaMax: null as number | null,
+    luminosidadeMin: null as number | null,
+    luminosidadeMax: null as number | null,
     instrucoesManejo: '',
     passo1PreparoSemente: '',
     passo2PreparoSolo: '',
@@ -101,12 +250,16 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // Mês do plantio já vem preenchido com o mês atual (editável)
+    this.contexto.mesPlantio = new Date().getMonth() + 1;
     this.carregarEspecies();
   }
 
   ngOnDestroy(): void {
     this.limparTimerProgresso();
     this.pararPollingProgresso();
+    this.pararCronometroBusca();
+    this.sugestoesSubscription?.unsubscribe();
     this.searchSubject.complete();
   }
 
@@ -137,6 +290,11 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(): void {
+    // Se o usuário digitou um novo termo, cancela qualquer busca anterior em andamento
+    this.sugestoesSubscription?.unsubscribe();
+    this.sugestoesSubscription = null;
+    this.finalizarBuscaSugestoes();
+
     this.formData.nomePopular = this.termoBuscaEspecie;
     this.showDropdownSugestoes = false;
     this.showSelectSugestoes = false;
@@ -150,6 +308,15 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
 
   buscarSugestoesIa(): void {
     if (!this.termoBuscaEspecie || !this.termoBuscaEspecie.trim()) return;
+    if (this.isLoadingScraping) return;
+
+    // Nova busca sempre começa com o formulário limpo: descarta qualquer dado não salvo da busca anterior
+    this.limparFormularioNaoSalvo();
+
+    // Botão vira "Tentar Novamente": cancela a busca anterior (IA instável/lenta) e recomeça
+    this.sugestoesSubscription?.unsubscribe();
+    this.sugestoesSubscription = null;
+    this.pararCronometroBusca();
 
     const termo = this.termoBuscaEspecie.trim();
     this.isBuscandoSugestoes = true;
@@ -160,16 +327,27 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     this.mensagemDemoraSugestoes = null;
     this.erroConexaoIa = false;
     this.erroConexaoIaMensagem = null;
-    this.cdr.detectChanges();
+    this.buscaDecorridaSegundos = 0;
+    this.isBuscaDemorando = false;
 
-    const timerDemora = setTimeout(() => {
+    this.buscaTimerInterval = setInterval(() => {
+      this.buscaDecorridaSegundos++;
+      if (this.buscaDecorridaSegundos >= this.limiteSegundosBuscaNormal) {
+        this.isBuscaDemorando = true;
+      }
+      this.cdr.detectChanges();
+    }, 1000);
+
+    this.timerDemoraBusca = setTimeout(() => {
       if (this.isBuscandoSugestoes) {
-        this.mensagemDemoraSugestoes = 'Conectando aos servidores de inteligência botânica... Por favor aguarde um momento.';
+        this.isBuscaDemorando = true;
+        this.mensagemDemoraSugestoes = 'A busca está demorando mais que o normal — a IA pode estar instável. Clique em Tentar Novamente para cancelar e rebuscar.';
         this.cdr.detectChanges();
       }
-    }, 4000);
+    }, this.limiteSegundosBuscaNormal * 1000);
 
-    this.agroTechService.getSugestoes(termo).pipe(
+    this.sugestoesSubscription = this.agroTechService.getSugestoes(termo).pipe(
+      timeout(90000),
       retry({ count: 1, delay: 1000 }),
       catchError((err) => {
         console.error('[PlantaCadastroComponent] Erro ao conectar/obter resposta da IA:', err);
@@ -177,10 +355,7 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
       })
     ).subscribe({
       next: (data) => {
-        clearTimeout(timerDemora);
-        this.isBuscandoSugestoes = false;
-        this.mensagemDemoraSugestoes = null;
-
+        this.finalizarBuscaSugestoes();
         if (!data || data.length === 0) {
           this.todasSugestoes = [];
           this.showSelectSugestoes = false;
@@ -195,9 +370,7 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        clearTimeout(timerDemora);
-        this.isBuscandoSugestoes = false;
-        this.mensagemDemoraSugestoes = null;
+        this.finalizarBuscaSugestoes();
         this.todasSugestoes = [];
         this.showSelectSugestoes = false;
         this.erroConexaoIa = true;
@@ -205,6 +378,62 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  private finalizarBuscaSugestoes(): void {
+    if (this.timerDemoraBusca) {
+      clearTimeout(this.timerDemoraBusca);
+      this.timerDemoraBusca = null;
+    }
+    this.pararCronometroBusca();
+    this.isBuscandoSugestoes = false;
+    this.isBuscaDemorando = false;
+    this.mensagemDemoraSugestoes = null;
+  }
+
+  private limparFormularioNaoSalvo(): void {
+    this.formData = {
+      apelidoLote: '',
+      especieId: '',
+      nomePopular: '',
+      nomeCientifico: '',
+      imagemUrl: '',
+      umidadeSoloMin: null,
+      umidadeSoloMax: null,
+      temperaturaMin: null,
+      temperaturaMax: null,
+      luminosidadeMin: null,
+      luminosidadeMax: null,
+      instrucoesManejo: '',
+      passo1PreparoSemente: '',
+      passo2PreparoSolo: '',
+      passo3SemeaduraGerminacao: '',
+      passo4CuidadosBrotoDesbaste: '',
+      passo5AclimatizacaoVasoDefinitivo: '',
+      passo6TransplanteMudas: '',
+      passo7NutricaoPoda: '',
+      passo8FloracaoColheita: '',
+      passo4TransplanteMudas: '',
+      passo5CrescimentoManejo: '',
+      passo6FloracaoColheita: '',
+      cuidadosDiaADia: '',
+      fonteDadosScraping: '',
+      isGeradoPorIa: false
+    };
+    this.imagemPreviewUrl = null;
+    this.camposOrigemIa = {};
+    this.ultimaSugestaoSelecionada = null;
+    this.relatorioFontes = [];
+    if (this.fileInput) {
+      this.fileInput.nativeElement.value = '';
+    }
+  }
+
+  private pararCronometroBusca(): void {
+    if (this.buscaTimerInterval) {
+      clearInterval(this.buscaTimerInterval);
+      this.buscaTimerInterval = null;
+    }
   }
 
   tentarNovamenteBuscaIa(): void {
@@ -255,7 +484,63 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     this.showDropdownSugestoes = false;
     this.showSelectSugestoes = false;
 
+    // Cache condicional: se a espécie já tem guia completo salvo, pergunta usar o cache ou buscar de novo
+    const especieSalva = this.especies.find(
+      (e) => e.nomePopular.toLowerCase() === sugestao.nomePopular.toLowerCase() && !!e.passo1PreparoSemente
+    );
+
+    if (especieSalva) {
+      this.sugestaoComCache = { sugestao, especie: especieSalva };
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.iniciarScrapingComProgresso(sugestao);
+  }
+
+  // Cache condicional
+  sugestaoComCache: { sugestao: EspecieSugestao; especie: Especie } | null = null;
+
+  usarGuiaSalvo(): void {
+    if (!this.sugestaoComCache) return;
+    const e = this.sugestaoComCache.especie;
+
+    this.formData.nomePopular = e.nomePopular;
+    this.formData.nomeCientifico = e.nomeCientifico || '';
+    this.formData.imagemUrl = e.imagemUrl || '';
+    this.imagemPreviewUrl = null;
+    this.formData.umidadeSoloMin = e.umidadeSoloMin ?? null;
+    this.formData.umidadeSoloMax = e.umidadeSoloMax ?? null;
+    this.formData.temperaturaMin = e.temperaturaMin ?? null;
+    this.formData.temperaturaMax = e.temperaturaMax ?? null;
+    this.formData.luminosidadeMin = e.luminosidadeMin ?? null;
+    this.formData.luminosidadeMax = e.luminosidadeMax ?? null;
+    this.formData.instrucoesManejo = e.instrucoesManejo || '';
+    this.formData.passo1PreparoSemente = e.passo1PreparoSemente || '';
+    this.formData.passo2PreparoSolo = e.passo2PreparoSolo || '';
+    this.formData.passo3SemeaduraGerminacao = e.passo3SemeaduraGerminacao || '';
+    this.formData.passo4TransplanteMudas = e.passo4TransplanteMudas || e.passo4CuidadosBrotoDesbaste || '';
+    this.formData.passo5CrescimentoManejo = e.passo5CrescimentoManejo || e.passo5AclimatizacaoVasoDefinitivo || '';
+    this.formData.passo6FloracaoColheita = e.passo6FloracaoColheita || e.passo8FloracaoColheita || '';
+    this.formData.cuidadosDiaADia = e.cuidadosDiaADia || '';
+    this.formData.fonteDadosScraping = e.fonteDadosScraping || 'Guia salvo no catálogo';
+    this.formData.isGeradoPorIa = false;
+    this.camposOrigemIa = {};
+
+    if (!this.formData.apelidoLote || this.formData.apelidoLote.startsWith('Mudas de ')) {
+      this.formData.apelidoLote = `Mudas de ${e.nomePopular} - Lote 01`;
+    }
+
+    this.sugestaoComCache = null;
+    this.cdr.detectChanges();
+  }
+
+  descartarGuiaSalvoEBuscar(): void {
+    const sugestao = this.sugestaoComCache?.sugestao;
+    this.sugestaoComCache = null;
+    if (sugestao) {
+      this.iniciarScrapingComProgresso(sugestao);
+    }
   }
 
   // ─── Coleta Profunda com Progresso Real (polling do backend) ─────────────────
@@ -268,12 +553,13 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     this.tempoDecorrido = 0;
     this.progressoEtapa = 'Preparando coleta profunda';
     this.progressoFontes = '13 fontes mundiais selecionadas';
+    this.relatorioFontes = [];
     this.mensagemProgresso = '🚀 Iniciando coleta multi-fonte (6 sites via scraping HTML + 7 bases científicas + IA)...';
     this.startTime = Date.now();
     this.tempoEstimado = 120;
     this.cdr.detectChanges();
 
-    this.agroTechService.iniciarScrapingComProgresso(sugestao.nomePopular, sugestao.nomeCientifico).subscribe({
+    this.agroTechService.iniciarScrapingComProgresso(sugestao.nomePopular, sugestao.nomeCientifico, this.contexto).subscribe({
       next: (res) => {
         this.tempoEstimado = res.tempoEstimadoSegundos || 120;
         this.iniciarPollingProgresso(res.sessaoId, sugestao);
@@ -295,6 +581,9 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
           this.mensagemProgresso = p.mensagem;
           this.tempoEstimado = p.tempoEstimadoSegundos;
           this.tempoDecorrido = p.decorridoSegundos;
+          if (p.fontes && p.fontes.length > 0) {
+            this.relatorioFontes = p.fontes;
+          }
 
           if (p.erro) {
             this.pararPollingProgresso();
@@ -340,7 +629,7 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
   private executarScrapingDireto(sugestao: EspecieSugestao): void {
     this.iniciarProgresso(sugestao.nomePopular);
 
-    this.agroTechService.scrapeEspecie(sugestao.nomePopular, sugestao.nomeCientifico)
+    this.agroTechService.scrapeEspecie(sugestao.nomePopular, sugestao.nomeCientifico, this.contexto)
       .pipe(
         retry({ count: 1, delay: 1500 }),
         timeout(180000)
@@ -527,6 +816,9 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
     this.formData.umidadeSoloMax = scrapedData.umidadeSoloMax ?? null;
     this.formData.temperaturaMin = scrapedData.temperaturaMin ?? null;
     this.formData.temperaturaMax = scrapedData.temperaturaMax ?? null;
+    // Luminosidade é nullable na fonte — null deixa o campo vazio e editável (RN-005/RN-008)
+    this.formData.luminosidadeMin = scrapedData.luminosidadeMin ?? null;
+    this.formData.luminosidadeMax = scrapedData.luminosidadeMax ?? null;
     this.formData.instrucoesManejo = scrapedData.instrucoesManejo || '';
     this.formData.passo1PreparoSemente = scrapedData.passo1PreparoSemente || '';
     this.formData.passo2PreparoSolo = scrapedData.passo2PreparoSolo || '';
@@ -587,6 +879,11 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.luminosidadeRangeInvalida) {
+      alert('Luminosidade: o mínimo deve ser menor ou igual ao máximo.');
+      return;
+    }
+
     this.isSaving = true;
     this.cdr.detectChanges();
 
@@ -598,6 +895,8 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
       umidadeSoloMax: this.formData.umidadeSoloMax,
       temperaturaMin: this.formData.temperaturaMin,
       temperaturaMax: this.formData.temperaturaMax,
+      luminosidadeMin: this.formData.luminosidadeMin,
+      luminosidadeMax: this.formData.luminosidadeMax,
       instrucoesManejo: this.formData.instrucoesManejo,
       passo1PreparoSemente: this.formData.passo1PreparoSemente,
       passo2PreparoSolo: this.formData.passo2PreparoSolo,
@@ -632,7 +931,9 @@ export class PlantaCadastroComponent implements OnInit, OnDestroy {
   private executarCriacaoPlanta(especieId: string): void {
     const payload = {
       apelidoLote: this.formData.apelidoLote,
-      especieId: especieId
+      especieId: especieId,
+      ufCultivo: this.contexto.regiaoUf,
+      areaCoberta: this.contexto.areaCoberta
     };
 
     this.agroTechService.createPlanta(payload).subscribe({

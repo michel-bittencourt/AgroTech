@@ -9,3 +9,8 @@
 .card {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
+
+// Borda de aviso (seção de erros comuns — token semântico)
+.borda-aviso {
+  border-left: 4px solid var(--warning);
+}

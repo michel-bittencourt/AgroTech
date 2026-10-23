@@ -1,0 +1,31 @@
+<!-- Toast global de conquista desbloqueada (RN-022 — UI_SPEC §6) -->
+@if (toastService.toastAtual(); as ev) {
+  <div class="toast-conquista shadow-lg" role="status" aria-live="polite">
+    <div class="toast-conquista-icone" [style.color]="tierVisual[ev.conquista.tier].cor" [style.borderColor]="tierVisual[ev.conquista.tier].cor">
+      <i class="fa-solid" [ngClass]="tierVisual[ev.conquista.tier].icone"></i>
+    </div>
+    <div class="toast-conquista-corpo">
+      <div class="toast-conquista-titulo">
+        Conquista desbloqueada!
+        <button type="button" class="toast-conquista-fechar" (click)="toastService.ocultarConquista()" aria-label="Fechar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="toast-conquista-nome">{{ ev.conquista.titulo }}</div>
+      <div class="toast-conquista-detalhe">
+        <span class="badge tier-badge" [style.backgroundColor]="tierVisual[ev.conquista.tier].cor">
+          {{ tierVisual[ev.conquista.tier].label }}
+        </span>
+        <span class="toast-conquista-xp"><i class="fa-solid fa-bolt me-1"></i>+{{ ev.conquista.xpRecompensa }} XP</span>
+        <span class="text-muted small" *ngIf="ev.plantaApelido">{{ ev.plantaApelido }}</span>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Feedback de XP de ação manual (ex.: "+35 XP (bônus)" — RN-013) -->
+@if (toastService.feedbackAcao(); as feedback) {
+  <div class="toast-feedback shadow" role="status" aria-live="polite">
+    <i class="fa-solid fa-bolt text-warning me-1"></i> {{ feedback }}
+  </div>
+}

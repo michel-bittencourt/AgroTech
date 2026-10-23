@@ -1,118 +1,216 @@
-<!-- Top Hero Header -->
-<header class="bg-agrotech-primary text-white py-4 shadow-sm mb-4">
-  <div class="container d-flex justify-content-between align-items-center mobile-stack-header">
-    <div>
-      <h1 class="h3 mb-0 fw-bold"><i class="fa-solid fa-seedling me-2"></i> AgroTech — Gestão de Mudas e Cultivos</h1>
-      <p class="mb-0 text-white-50 small">Monitoramento inteligente e cadastro assistido por IA botânica</p>
-    </div>
-    <div class="d-flex align-items-center gap-2">
-      <button class="btn btn-outline-light btn-sm rounded-pill px-3" (click)="abrirModalApi()" title="Configurar URL do Servidor API / Túnel Cloudflare">
-        <i class="fa-solid fa-link me-1"></i> Servidor API
-      </button>
-      <button class="btn btn-light text-success fw-bold px-4 rounded-pill shadow-sm" (click)="cadastrar()">
-        <i class="fa-solid fa-plus me-1"></i> Cadastrar
-      </button>
-    </div>
-  </div>
-</header>
-
 <div class="container pb-5">
-  <!-- Empty State -->
-  <div *ngIf="!isLoading && plantas.length === 0" class="text-center py-5 card card-agrotech bg-white p-5 border-0 shadow-sm rounded-4">
-    <div class="mb-3">
-      <i class="fa-solid fa-plant-wilt fa-4x text-muted opacity-50"></i>
-    </div>
-    <h3 class="fw-bold text-dark">Nenhuma muda ou planta cadastrada</h3>
-    <p class="text-muted">Comece cadastrando suas pequenas plantações para acompanhar os parâmetros ideais de umidade e temperatura.</p>
+  <!-- Cabeçalho da página (shell fornece o topo; sem header duplicado) -->
+  <div class="page-header">
     <div>
-      <button class="btn btn-success px-4 rounded-pill shadow-sm mobile-full-btn" (click)="cadastrar()">
+      <h1 class="page-titulo"><i class="fa-solid fa-seedling text-agrotech-primary"></i> Meu Jardim</h1>
+      <p class="page-subtitulo">Monitoramento inteligente e gamificação das suas mudas e cultivos</p>
+    </div>
+    <div class="page-acoes">
+      <!-- Sino de notificações -->
+      <div class="position-relative">
+        <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3 position-relative" (click)="alternarNotificacoes()" title="Ações do dia e pendências">
+          <i class="fa-solid fa-bell me-1"></i> Tarefas
+          <span *ngIf="atrasadasCount > 0" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 10px;">
+            {{ atrasadasCount }}
+          </span>
+        </button>
+        <div *ngIf="mostrarNotificacoes" class="position-absolute end-0 mt-2 bg-white rounded-3 shadow p-3" style="width: 340px; max-height: 420px; overflow-y: auto; z-index: 10;">
+          <div class="fw-bold small text-dark mb-2"><i class="fa-solid fa-bell text-warning me-1"></i> Ações do dia &amp; pendências</div>
+          <div *ngIf="notificacoes.length === 0" class="text-muted small py-2">Nada pendente — jardim em dia! 🌱</div>
+          <div *ngFor="let n of notificacoes" class="d-flex align-items-start justify-content-between gap-2 py-2 border-bottom cursor-pointer" (click)="irParaNotificacao(n)">
+            <div>
+              <div class="small fw-semibold text-dark">{{ n.titulo }}</div>
+              <div class="small text-muted">{{ n.apelidoLote }} · {{ n.dataPrevista | date:'dd/MM' }}</div>
+            </div>
+            <span class="badge px-2 py-1 rounded-pill small" [ngClass]="n.status === 'atrasado' ? 'bg-danger-subtle text-danger border border-danger-subtle' : (n.status === 'hoje' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-secondary-subtle text-secondary border border-secondary-subtle')">
+              {{ n.status === 'atrasado' ? 'atrasado' : (n.status === 'hoje' ? 'hoje' : 'em breve') }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm" (click)="cadastrar()">
         <i class="fa-solid fa-plus me-1"></i> Cadastrar
       </button>
     </div>
   </div>
 
-  <!-- Loading State -->
-  <div *ngIf="isLoading" class="text-center py-5">
-    <div class="spinner-border text-success" role="status"></div>
-    <p class="text-muted mt-2">Carregando seus cultivos...</p>
-  </div>
+  <!-- Loading -->
+  @if (isLoading) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-success" role="status"></div>
+      <p class="text-muted mt-2">Carregando seus cultivos...</p>
+    </div>
+  }
 
-  <!-- Cards de Plantas (Clicáveis, Sem botões de edição/exclusão nos cards) -->
-  <div class="row g-4" *ngIf="!isLoading && plantas.length > 0">
-    <div class="col-12 col-md-6 col-lg-4" *ngFor="let planta of plantas">
-      <div class="card card-agrotech h-100 bg-white border-0 shadow-sm rounded-4 cursor-pointer planta-card overflow-hidden" (click)="verDetalhes(planta.id)">
-        <div *ngIf="planta.imagemUrl" class="position-relative">
-          <img [src]="planta.imagemUrl" alt="Foto de {{ planta.especieNomePopular }}" class="w-100" style="height: 130px; object-fit: cover;" />
-          <span class="badge bg-dark bg-opacity-75 text-white position-absolute top-0 start-0 m-2 rounded-pill px-3 py-1 small">
-            <i class="fa-solid fa-camera me-1"></i> {{ planta.especieNomePopular }}
-          </span>
+  <!-- Empty state -->
+  @if (!isLoading && plantas.length === 0) {
+    <div class="empty-state mb-4">
+      <i class="fa-solid fa-plant-wilt empty-icone"></i>
+      <h3 class="empty-titulo">Nenhuma muda ou planta cadastrada</h3>
+      <p class="empty-texto">Comece cadastrando suas pequenas plantações para acompanhar os parâmetros ideais de umidade, temperatura e luz.</p>
+      <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm mobile-full-btn" (click)="cadastrar()">
+        <i class="fa-solid fa-plus me-1"></i> Cadastrar
+      </button>
+    </div>
+  }
+
+  @if (!isLoading && plantas.length > 0) {
+    <!-- Hero compacto: saúde/XP do jardim em 1 linha (gamificação §6.1) -->
+    @if (jardim; as j) {
+      <div class="hero-compacto">
+        <div class="hero-metrica">
+          <i class="fa-solid fa-bolt text-warning"></i>
+          <div>
+            <span class="hero-rotulo">XP do Cultivador</span>
+            <span class="hero-valor">{{ j.xpTotalCultivador }}</span>
+          </div>
         </div>
-        <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
-          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-medium" *ngIf="!planta.imagemUrl">
-            <i class="fa-solid fa-leaf me-1"></i> {{ planta.especieNomePopular }}
-          </span>
-          <span class="badge bg-light text-secondary rounded-pill px-2 py-1 small ms-auto">
-            Ver detalhes <i class="fa-solid fa-chevron-right ms-1"></i>
-          </span>
+        <div class="hero-separador"></div>
+        <div class="hero-metrica">
+          <i class="fa-solid fa-leaf text-agrotech-primary"></i>
+          <div>
+            <span class="hero-rotulo">Plantas</span>
+            <span class="hero-valor">{{ j.plantasAtivas }} <span class="text-muted fw-normal">ativas de {{ j.totalPlantas }}</span></span>
+          </div>
         </div>
+        <div class="hero-separador"></div>
+        <a class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold" routerLink="/conquistas">
+          <i class="fa-solid fa-medal me-1"></i> Conquistas
+          <i class="fa-solid fa-chevron-right ms-1 small"></i>
+        </a>
+      </div>
 
-        <div class="card-body">
-          <h5 class="fw-bold text-dark mb-1">{{ planta.apelidoLote }}</h5>
-          <p class="text-muted small fst-italic mb-3" *ngIf="planta.especieNomeCientifico">
-            {{ planta.especieNomeCientifico }}
-          </p>
+      <!-- Painel de coleções (expande pelo chip do hero) — RN-020 -->
+      @if (painelColecaoAberto) {
+        <div class="section-card compacto">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-medal text-warning me-2"></i>Conquistas de Coleção do Jardim</h6>
+            <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill small">
+              {{ colecaoConcluidasCount() }}/{{ j.conquistasColecao.length }} concluídas
+            </span>
+          </div>
+          <div class="conquistas-grid">
+            @for (c of j.conquistasColecao; track c.id) {
+              <div class="conquista-card"
+                   [class.conquistada]="c.status === 'Concluida'"
+                   [title]="c.descricao">
+                <div class="conquista-icone" [style.color]="tierCor(c.tier)" [style.borderColor]="tierCor(c.tier)">
+                  <i class="fa-solid" [ngClass]="c.status === 'Concluida' ? tierIcone(c.tier) : 'fa-lock'"></i>
+                </div>
+                <div class="conquista-info">
+                  <div class="conquista-titulo">
+                    {{ c.titulo }}
+                    <span class="badge ms-1" [style.backgroundColor]="tierCor(c.tier)" [class.text-white]="true">{{ tierLabel(c.tier) }}</span>
+                  </div>
+                  <div class="conquista-desc">{{ c.descricao }}</div>
+                  <div class="progress conquista-progress" *ngIf="c.status !== 'Concluida'">
+                    <div class="progress-bar" [ngClass]="c.tier === 'Lendario' ? 'bg-warning' : 'bg-success'" [style.width.%]="percentualProgresso(c)"></div>
+                  </div>
+                  <div class="conquista-status">
+                    @if (c.status === 'Concluida' && c.dataDesbloqueio) {
+                      <span class="text-success"><i class="fa-solid fa-check me-1"></i>Conquistada {{ c.dataDesbloqueio | date:'dd/MM/yy HH:mm' }}</span>
+                    } @else {
+                      <span class="text-muted">{{ c.progresso ? (c.progresso.atual + '/' + c.progresso.necessario) : 'Bloqueada' }} · +{{ c.xpRecompensa }} XP</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
 
-          <div class="p-3 bg-light rounded-3 mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="small text-muted"><i class="fa-solid fa-droplet text-primary me-1"></i> Umidade Solo Ideal:</span>
-              <span class="fw-bold text-dark">{{ (planta.umidadeSoloMin != null && planta.umidadeSoloMax != null) ? (planta.umidadeSoloMin + '% - ' + planta.umidadeSoloMax + '%') : 'Não informado' }}</span>
+          <hr class="my-4" />
+
+          <!-- Catálogo clássico de conquistas (endpoint /conquistas) — funcionalidade preservada -->
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-trophy text-warning me-2"></i>Conquistas do Jardim</h6>
+            <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill small">
+              <i class="fa-solid fa-medal me-1"></i> {{ conquistadasCount }}/{{ conquistas.length }} conquistadas
+            </span>
+          </div>
+
+          <div *ngIf="isLoadingConquistas" class="text-center text-muted small py-3">
+            <i class="fa-solid fa-circle-notch spin-icon me-1"></i> Carregando conquistas...
+          </div>
+
+          <div class="conquistas-grid" *ngIf="!isLoadingConquistas">
+            <div *ngFor="let c of conquistas" class="conquista-card" [class.conquistada]="c.conquistada" [title]="c.descricao">
+              <div class="conquista-icone">
+                <i class="fa-solid" [ngClass]="c.icone"></i>
+              </div>
+              <div class="conquista-info">
+                <div class="conquista-titulo">{{ c.titulo }}</div>
+                <div class="conquista-desc">{{ c.descricao }}</div>
+                <div class="progress conquista-progress" *ngIf="!c.conquistada">
+                  <div class="progress-bar bg-success" [style.width.%]="(c.progressoAtual / c.progressoAlvo) * 100"></div>
+                </div>
+                <div class="conquista-status">
+                  <span *ngIf="c.conquistada" class="text-success"><i class="fa-solid fa-check me-1"></i>Conquistada {{ c.conquistadaEm | date:'dd/MM/yy' }}</span>
+                  <span *ngIf="!c.conquistada" class="text-muted">{{ c.progressoAtual }}/{{ c.progressoAlvo }}</span>
+                </div>
+              </div>
             </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="small text-muted"><i class="fa-solid fa-temperature-half text-warning me-1"></i> Temp. Recomendada:</span>
-              <span class="fw-bold text-dark">{{ (planta.temperaturaMin != null && planta.temperaturaMax != null) ? (planta.temperaturaMin + '°C - ' + planta.temperaturaMax + '°C') : 'Não informado' }}</span>
+          </div>
+        </div>
+      }
+    } @else if (!isLoadingJardim) {
+      <!-- Jardim indisponível: não bloqueia a página, apenas omite o resumo -->
+    }
+
+    <!-- Grid de plantas (min 280px) -->
+    <div class="plantas-grid">
+      @for (planta of plantas; track planta.id) {
+        <div class="card card-agrotech h-100 bg-white cursor-pointer planta-card overflow-hidden" (click)="verDetalhes(planta.id)">
+          <div *ngIf="planta.imagemUrl" class="position-relative">
+            <img [src]="planta.imagemUrl" alt="Foto de {{ planta.especieNomePopular }}" class="w-100 capa-planta" />
+            <span class="badge bg-dark bg-opacity-75 text-white position-absolute top-0 start-0 m-2 rounded-pill px-3 py-1 small">
+              <i class="fa-solid fa-camera me-1"></i> {{ planta.especieNomePopular }}
+            </span>
+          </div>
+          <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex justify-content-between align-items-center">
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 fw-medium" *ngIf="!planta.imagemUrl">
+              <i class="fa-solid fa-leaf me-1"></i> {{ planta.especieNomePopular }}
+            </span>
+            <span class="badge bg-light text-secondary rounded-pill px-2 py-1 small ms-auto">
+              Ver detalhes <i class="fa-solid fa-chevron-right ms-1"></i>
+            </span>
+          </div>
+
+          <div class="card-body">
+            <h5 class="fw-bold text-dark mb-1">{{ planta.apelidoLote }}</h5>
+            <p class="text-muted small fst-italic mb-3" *ngIf="planta.especieNomeCientifico">
+              {{ planta.especieNomeCientifico }}
+            </p>
+
+            <div class="p-3 bg-light rounded-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-muted"><i class="fa-solid fa-droplet text-primary me-1"></i> Umidade Solo Ideal:</span>
+                <span class="fw-bold text-dark">{{ (planta.umidadeSoloMin != null && planta.umidadeSoloMax != null) ? (planta.umidadeSoloMin + '% - ' + planta.umidadeSoloMax + '%') : 'Não informado' }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="small text-muted"><i class="fa-solid fa-temperature-half text-warning me-1"></i> Temp. Recomendada:</span>
+                <span class="fw-bold text-dark">{{ (planta.temperaturaMin != null && planta.temperaturaMax != null) ? (planta.temperaturaMin + '°C - ' + planta.temperaturaMax + '°C') : 'Não informado' }}</span>
+              </div>
+            </div>
+
+            <!-- Alerta de manejo ativo + "Confirmar ação" (RN-013) — oculto para plantas arquivadas (RN-021) -->
+            <div *ngIf="planta.alertaAtivo && planta.statusVida !== 'Arquivada'" class="alert alert-danger py-2 px-3 rounded-3 small mt-3 mb-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <span><i class="fa-solid fa-triangle-exclamation me-1"></i> {{ planta.alertaAtivo.mensagem }}</span>
+              <button type="button" class="btn btn-sm btn-success rounded-pill px-3" (click)="confirmarManejo(planta)" [disabled]="manejoEmAndamento === planta.id">
+                <i class="fa-solid" [ngClass]="manejoEmAndamento === planta.id ? 'fa-circle-notch spin-icon me-1' : 'fa-check me-1'"></i> Confirmar ação
+              </button>
             </div>
           </div>
 
-          <!-- Instruções de Manejo -->
-          <p class="small text-secondary mb-0 line-clamp-2" *ngIf="planta.instrucoesManejo">
-            <i class="fa-solid fa-circle-info text-info me-1"></i> {{ planta.instrucoesManejo }}
-          </p>
+          <div class="card-footer bg-light border-0 py-2 px-3 d-flex justify-content-between align-items-center text-muted small rounded-bottom-4">
+            <span><i class="fa-regular fa-calendar-check me-1"></i> Cadastrado em {{ (planta.criadoEm | date:'dd/MM/yyyy') || 'Recente' }}</span>
+            @if (planta.statusVida === 'Arquivada') {
+              <span class="badge bg-secondary rounded-pill px-3 py-1"><i class="fa-solid fa-box-archive me-1"></i> Histórico</span>
+            } @else {
+              <span class="text-success fw-medium"><i class="fa-solid fa-circle-check me-1"></i> Ativo</span>
+            }
+          </div>
         </div>
-
-        <div class="card-footer bg-light border-0 py-2 px-3 d-flex justify-content-between align-items-center text-muted small rounded-bottom-4">
-          <span><i class="fa-regular fa-calendar-check me-1"></i> Cadastrado em {{ (planta.criadoEm | date:'dd/MM/yyyy') || 'Recente' }}</span>
-          <span class="text-success fw-medium"><i class="fa-solid fa-circle-check me-1"></i> Ativo</span>
-        </div>
-      </div>
+      }
     </div>
-  </div>
-</div>
-
-<!-- Modal Configuração da URL da API -->
-<div *ngIf="showApiModal" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center z-3" style="background-color: rgba(0,0,0,0.5);">
-  <div class="card border-0 shadow-lg rounded-4 p-4 bg-white" style="max-width: 520px; width: 90%;">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-      <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
-        <i class="fa-solid fa-network-wired text-success"></i>
-        <span>Configurar Servidor API</span>
-      </h5>
-      <button type="button" class="btn-close" (click)="fecharModalApi()"></button>
-    </div>
-    <p class="text-muted small mb-3">
-      Informe a URL pública HTTPS do seu túnel Cloudflare para conectar a Vercel ao seu backend local.
-    </p>
-
-    <div class="mb-4">
-      <label class="form-label small fw-bold text-secondary">URL Base da API</label>
-      <input type="text" class="form-control form-control-lg rounded-3 fs-6" placeholder="https://xxxx.trycloudflare.com/api" [(ngModel)]="inputApiUrl" />
-      <div class="form-text text-muted mt-2" style="font-size: 11px;">
-        Exemplo: <code>https://citizenship-edited-necessarily-workout.trycloudflare.com/api</code>
-      </div>
-    </div>
-
-    <div class="d-flex justify-content-end gap-2 mobile-stack-actions">
-      <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" (click)="fecharModalApi()">Cancelar</button>
-      <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm" (click)="salvarEConectarApi()">Salvar & Conectar</button>
-    </div>
-  </div>
+  }
 </div>

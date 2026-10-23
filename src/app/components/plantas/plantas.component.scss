@@ -6,6 +6,13 @@
   cursor: pointer;
 }
 
+.capa-planta {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  display: block;
+}
+
 .planta-card {
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 

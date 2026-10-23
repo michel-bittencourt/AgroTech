@@ -1,0 +1,127 @@
+// Badge numérico das seções numeradas (UI_SPEC §5.2 — mesmo padrão do cadastro por semente)
+.numero-secao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background-color: var(--agrotech-green-primary);
+  color: #ffffff;
+  font-size: 0.85rem;
+  margin-right: 0.4rem;
+}
+
+// Autocomplete de espécie
+.lista-sugestoes {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border: 1px solid var(--neutral-300);
+  border-radius: 0.6rem;
+
+  .lista-sugestoes-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.55rem 0.9rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--neutral-200);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: var(--agrotech-green-light);
+    }
+  }
+}
+
+// Stepper compacto de seleção de estágio (UI_SPEC §5.3)
+.stepper-estagio {
+  .stepper-estagio-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--neutral-300);
+    background-color: #ffffff;
+    color: var(--neutral-500);
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: var(--agrotech-green-primary);
+      color: var(--agrotech-green-primary);
+    }
+
+    &.selecionado {
+      background-color: var(--agrotech-green-primary);
+      border-color: var(--agrotech-green-primary);
+      color: #ffffff;
+    }
+  }
+}
+
+// Checklist de estado físico por parte
+.parte-checklist {
+  padding: 0.75rem;
+  border: 1px solid var(--neutral-200);
+  border-radius: 0.75rem;
+  height: 100%;
+}
+
+.chip-sintoma {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--neutral-300);
+  background-color: #ffffff;
+  color: var(--neutral-500);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--agrotech-green-primary);
+  }
+
+  &.selecionado {
+    background-color: #fdecea;
+    border-color: #c0392b;
+    color: #c0392b;
+  }
+}
+
+// Miniaturas de fotos (RN-029)
+.foto-miniatura {
+  display: inline-block;
+
+  .foto-thumb {
+    width: 76px;
+    height: 76px;
+    object-fit: cover;
+    border-radius: 0.6rem;
+    border: 1px solid var(--neutral-300);
+  }
+
+  .foto-remover {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+    transform: translate(30%, -30%);
+  }
+}
+
+// Linha do repetidor de histórico
+.intervencao-linha {
+  background-color: #ffffff;
+}

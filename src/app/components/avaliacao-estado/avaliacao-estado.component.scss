@@ -1,0 +1,46 @@
+.parte-checklist {
+  padding: 0.75rem;
+  border: 1px solid var(--neutral-200);
+  border-radius: 0.75rem;
+  height: 100%;
+}
+
+.chip-sintoma {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--neutral-300);
+  background-color: #ffffff;
+  color: var(--neutral-500);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--agrotech-green-primary);
+  }
+
+  &.selecionado {
+    background-color: #fdecea;
+    border-color: #c0392b;
+    color: #c0392b;
+  }
+}
+
+.foto-miniatura {
+  display: inline-block;
+
+  .foto-thumb {
+    width: 76px;
+    height: 76px;
+    object-fit: cover;
+    border-radius: 0.6rem;
+    border: 1px solid var(--neutral-300);
+  }
+
+  .foto-remover {
+    width: 20px;
+    height: 20px;
+    font-size: 9px;
+    transform: translate(30%, -30%);
+  }
+}

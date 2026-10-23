@@ -99,6 +99,73 @@
   animation: toast-conquista-entrada 0.3s ease;
 }
 
+// Toast discreto "Nova recomendação da IA" (RN-034) — tom sóbrio, discreto perto do toast de conquista
+.toast-recomendacao {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 2000;
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  max-width: 340px;
+  width: calc(100% - 2rem);
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem;
+  background-color: #ffffff;
+  border: 1px solid #e3e8e3;
+  border-left: 5px solid #5b21b6;
+  animation: toast-conquista-entrada 0.3s ease;
+
+  .toast-recomendacao-icone {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    background-color: #ede9fe;
+    color: #5b21b6;
+  }
+
+  .toast-recomendacao-corpo {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .toast-recomendacao-titulo {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #212529;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .toast-recomendacao-texto {
+    font-size: 0.82rem;
+    color: #374151;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+
+  .toast-recomendacao-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #5b21b6;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
 @keyframes toast-conquista-entrada {
   from {
     opacity: 0;

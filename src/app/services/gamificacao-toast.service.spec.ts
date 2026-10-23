@@ -1,5 +1,6 @@
 import { GamificacaoToastService } from './gamificacao-toast.service';
 import { ConquistaDesbloqueadaEvento } from '../models/gamificacao.models';
+import { RecomendacaoIaEvento } from '../models/recuperacao.models';
 
 function eventoFake(titulo: string): ConquistaDesbloqueadaEvento {
   return {
@@ -58,5 +59,24 @@ describe('GamificacaoToastService', () => {
     expect(service.feedbackAcao()).toBe('+35 XP (bônus)');
     service.ocultarFeedback();
     expect(service.feedbackAcao()).toBeNull();
+  });
+
+  it('exibe o toast discreto de recomendação da IA (RN-034)', () => {
+    const evento: RecomendacaoIaEvento = {
+      plantaId: 'a1b2c3d4-e5f6-7890-abcd-1234567890ab',
+      plantaApelido: 'Boldo',
+      recomendacao: { id: 'r1', titulo: 'Atenção ao período de aclimatação', mensagem: 'Mantenha na sombra por 7 dias.', contexto: 'Intervencao' },
+      geradaEm: '2026-10-22T14:00:00Z'
+    };
+    service.exibirRecomendacao(evento);
+    expect(service.recomendacaoAtual()).toEqual(evento);
+    service.ocultarRecomendacao();
+    expect(service.recomendacaoAtual()).toBeNull();
+  });
+
+  it('ignora evento de recomendação inválido (sem recomendacao)', () => {
+    const invalido = { plantaId: 'x', recomendacao: null, geradaEm: '' } as unknown as RecomendacaoIaEvento;
+    service.exibirRecomendacao(invalido);
+    expect(service.recomendacaoAtual()).toBeNull();
   });
 });

@@ -35,9 +35,24 @@ import {
 } from '../../models/gamificacao.models';
 import { GamificacaoHubService } from '../../services/gamificacao-hub.service';
 import { GamificacaoToastService } from '../../services/gamificacao-toast.service';
+import {
+  AvaliacaoEstadoItem,
+  CONTEXTO_RECOMENDACAO_LABEL,
+  ConcluirEtapaResponse,
+  ContextoRecomendacaoIa,
+  EtapaEditorItem,
+  IntervencaoItem,
+  OrigemEtapas,
+  PARTES_CHECKLIST,
+  PlanoRecuperacaoItem,
+  RecomendacaoIaItem,
+  TIPO_INTERVENCAO_VISUAL,
+  TipoIntervencao,
+  intervencaoRetroativa
+} from '../../models/recuperacao.models';
 
-/** Seções colapsáveis da tela de detalhe (redesign UI). */
-type SecaoGamificacao = 'trilha' | 'conquistas' | 'saude' | 'acoes';
+/** Seções colapsáveis da tela de detalhe (redesign UI + lote Recuperação/IA). */
+type SecaoGamificacao = 'trilha' | 'conquistas' | 'saude' | 'acoes' | 'estadoFisico' | 'intervencoes' | 'recomendacoes';
 
 @Component({
   selector: 'app-planta-detalhes',
@@ -130,6 +145,19 @@ export class PlantaDetalhesComponent implements OnInit, OnDestroy {
       }
       this.cdr.detectChanges();
     });
+
+    // Evento SignalR RecomendacaoIa desta planta → painel atualiza em tempo real (RN-034)
+    effect(() => {
+      const rec = this.gamificacaoHub.ultimaRecomendacao();
+      if (rec && rec.plantaId === this.plantaId) {
+        this.recomendacoes = [this.recomendacaoDoEvento(rec), ...this.recomendacoes.filter((r) => r.id !== rec.recomendacao.id)];
+        this.recomendacoesIndisponiveis = false;
+        // Nova intervenção/avaliação chegou com a recomendação → histórico pode ter mudado
+        this.carregarIntervencoes();
+        this.carregarAvaliacoes();
+      }
+      this.cdr.detectChanges();
+    });
   }
 
   // ─── Galeria de Evolução ─────────────────────────────────────────────────────
@@ -213,8 +241,12 @@ export class PlantaDetalhesComponent implements OnInit, OnDestroy {
       this.carregarClima();
       this.carregarGamificacao();
       this.carregarConquistas();
+      this.carregarAvaliacoes();
+      this.carregarIntervencoes();
+      this.carregarRecomendacoes();
       this.gamificacaoHub.iniciar();
       this.iniciarContagemRegressiva();
+      this.tratarQueryAbrirPlano();
     } else {
       this.router.navigate(['/plantas']);
     }
@@ -1084,14 +1116,322 @@ export class PlantaDetalhesComponent implements OnInit, OnDestroy {
     return { confirmados: (atual?.confirmados ?? 0) + (jaMarcado ? 0 : 1), dias };
   }
 
+  // ─── Plantas Existentes, Recuperação e Assistência IA (RN-026..036) ──────────
+
+  readonly TIPO_INTERVENCAO_VISUAL = TIPO_INTERVENCAO_VISUAL;
+  readonly CONTEXTO_RECOMENDACAO_LABEL: Record<ContextoRecomendacaoIa, string> = CONTEXTO_RECOMENDACAO_LABEL;
+  readonly PARTES_CHECKLIST = PARTES_CHECKLIST;
+
+  // ── Acordeão Estado Físico (RN-028/029) ────────────────────────────────────
+
+  avaliacoes: AvaliacaoEstadoItem[] = [];
+  isLoadingAvaliacoes = false;
+
+  /** Última avaliação resumida no topo do acordeão (UI_SPEC §4.2). */
+  get ultimaAvaliacao(): AvaliacaoEstadoItem | null {
+    return this.avaliacoes.length > 0 ? this.avaliacoes[0] : null;
+  }
+
+  /** Partes do checklist com pelo menos um sintoma (resumo da última avaliação). */
+  partesComSintoma(avaliacao: AvaliacaoEstadoItem): { parte: string; sintomas: string[] }[] {
+    return PARTES_CHECKLIST
+      .map((g) => ({ parte: g.label, sintomas: avaliacao.checklist?.[g.parte] ?? [] }))
+      .filter((p) => p.sintomas.length > 0);
+  }
+
+  carregarAvaliacoes(): void {
+    if (!this.plantaId) return;
+    this.isLoadingAvaliacoes = this.avaliacoes.length === 0;
+    this.agroTechService.getAvaliacoes(this.plantaId).subscribe({
+      next: (lista) => {
+        this.avaliacoes = lista || [];
+        this.isLoadingAvaliacoes = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao carregar avaliações de estado físico:', err);
+        this.isLoadingAvaliacoes = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** URL absoluta de foto de avaliação (relativa à base da API). */
+  urlFotoAvaliacao(url: string): string {
+    return url.startsWith('http') ? url : `${this.apiBaseUrl}${url}`;
+  }
+
+  /** Ampliação de miniatura (UI_SPEC §6 — fotos documentais clicáveis, RN-029). */
+  fotoAmpliada: string | null = null;
+
+  ampliarFoto(url: string): void {
+    this.fotoAmpliada = this.urlFotoAvaliacao(url);
+    this.cdr.detectChanges();
+  }
+
+  fecharFoto(): void {
+    this.fotoAmpliada = null;
+    this.cdr.detectChanges();
+  }
+
+  // ── Acordeão Intervenções + Plano de Recuperação (RN-030..033) ─────────────
+
+  intervencoes: IntervencaoItem[] = [];
+  isLoadingIntervencoes = false;
+
+  /** Nota discreta "Janela de verificação contando do registro" (RN-032 — transplante retroativo). */
+  transplanteRetroativo(iv: IntervencaoItem): boolean {
+    return iv.tipo === 'Transplante' && intervencaoRetroativa(iv.dataEvento, iv.criadoEm);
+  }
+
+  carregarIntervencoes(): void {
+    if (!this.plantaId) return;
+    this.isLoadingIntervencoes = this.intervencoes.length === 0;
+    this.agroTechService.getIntervencoes(this.plantaId).subscribe({
+      next: (lista) => {
+        this.intervencoes = lista || [];
+        this.isLoadingIntervencoes = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        console.error('Erro ao carregar intervenções:', err);
+        this.isLoadingIntervencoes = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  // ── Plano da intervenção selecionada (checklist + criação — RN-033) ────────
+
+  intervencaoSelecionadaId: string | null = null;
+  planoSelecionado: PlanoRecuperacaoItem | null = null;
+  isLoadingPlano = false;
+  isConcluindoEtapa = '';
+
+  /** Editor de etapas — ajuste antes de ativar (sugestão IA ou manual). */
+  etapasEditor: EtapaEditorItem[] = [];
+  origemEtapasEditor: OrigemEtapas = 'SugeridaIa';
+  sugerindoEtapas = false;
+  criandoPlano = false;
+  iaIndisponivelPlano = false;
+  erroPlano = '';
+
+  selecionarIntervencao(iv: IntervencaoItem): void {
+    if (this.intervencaoSelecionadaId === iv.id) {
+      this.fecharPlano();
+      return;
+    }
+    this.intervencaoSelecionadaId = iv.id;
+    this.planoSelecionado = null;
+    this.etapasEditor = [];
+    this.iaIndisponivelPlano = false;
+    this.erroPlano = '';
+    this.carregarPlanoDaIntervencao(iv.id);
+  }
+
+  fecharPlano(): void {
+    this.intervencaoSelecionadaId = null;
+    this.planoSelecionado = null;
+    this.etapasEditor = [];
+    this.iaIndisponivelPlano = false;
+    this.erroPlano = '';
+  }
+
+  /** GET §7.6.4 — 404 = sem plano (oferta de criação, UI_SPEC §4.2). */
+  carregarPlanoDaIntervencao(intervencaoId: string): void {
+    this.isLoadingPlano = true;
+    this.cdr.detectChanges();
+    this.agroTechService.getPlanoDaIntervencao(intervencaoId).subscribe({
+      next: (plano) => {
+        this.planoSelecionado = plano;
+        this.isLoadingPlano = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        // 404 com corpo vazio = intervenção sem plano → oferta "Sugerir etapas com IA"
+        this.planoSelecionado = null;
+        this.isLoadingPlano = false;
+        if (err.status !== 404) {
+          console.error('Erro ao carregar plano da intervenção:', err);
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Sugestão IA sem persistir (§7.6.1) — 503 oferece criação manual (ERR-IA-002, RN-036). */
+  sugerirEtapas(intervencaoId: string): void {
+    if (this.sugerindoEtapas) return;
+    this.sugerindoEtapas = true;
+    this.iaIndisponivelPlano = false;
+    this.erroPlano = '';
+    this.cdr.detectChanges();
+
+    this.agroTechService.sugerirEtapasPlano(intervencaoId).subscribe({
+      next: (res) => {
+        this.sugerindoEtapas = false;
+        this.origemEtapasEditor = res.origemEtapas ?? 'SugeridaIa';
+        this.etapasEditor = (res.etapas || []).map((e) => ({ descricao: e.descricao, duracaoDias: e.duracaoDias }));
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.sugerindoEtapas = false;
+        if (err.status === 503) {
+          // RN-036: IA indisponível → criação manual, cadastro não é bloqueado
+          this.iaIndisponivelPlano = true;
+          this.iniciarPlanoManual();
+        } else {
+          this.erroPlano = this.mensagemDeErro(err, 'Não foi possível sugerir as etapas.');
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Editor vazio para criação manual das etapas (RN-033/036). */
+  iniciarPlanoManual(): void {
+    this.origemEtapasEditor = 'Manual';
+    if (this.etapasEditor.length === 0) {
+      this.etapasEditor = [
+        { descricao: '', duracaoDias: 7 },
+        { descricao: '', duracaoDias: 3 }
+      ];
+    }
+    this.cdr.detectChanges();
+  }
+
+  adicionarEtapa(): void {
+    this.etapasEditor = [...this.etapasEditor, { descricao: '', duracaoDias: 1 }];
+    this.cdr.detectChanges();
+  }
+
+  removerEtapa(indice: number): void {
+    this.etapasEditor = this.etapasEditor.filter((_, i) => i !== indice);
+    this.cdr.detectChanges();
+  }
+
+  /** POST §7.6.2 — cria e ativa o plano com as etapas ajustadas (RN-033). */
+  salvarPlano(intervencaoId: string): void {
+    if (this.criandoPlano) return;
+    const etapasValidas = this.etapasEditor
+      .map((e, i) => ({ ordem: i + 1, descricao: e.descricao.trim(), duracaoDias: Math.max(1, Math.floor(e.duracaoDias || 1)) }))
+      .filter((e) => e.descricao.length > 0);
+
+    if (etapasValidas.length === 0) {
+      this.erroPlano = 'Informe ao menos uma etapa com descrição.';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.criandoPlano = true;
+    this.erroPlano = '';
+    this.cdr.detectChanges();
+
+    this.agroTechService.criarPlanoRecuperacao(intervencaoId, { origemEtapas: this.origemEtapasEditor, etapas: etapasValidas }).subscribe({
+      next: (plano) => {
+        this.criandoPlano = false;
+        this.planoSelecionado = plano;
+        this.etapasEditor = [];
+        this.iaIndisponivelPlano = false;
+        this.toastService.exibirFeedback('Plano de recuperação ativado');
+        this.carregarIntervencoes();
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.criandoPlano = false;
+        this.erroPlano = this.mensagemDeErro(err, 'Não foi possível criar o plano de recuperação.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** PATCH §7.6.3 — conclusão idempotente de etapa (RN-033; última etapa conclui o plano — RN-034). */
+  concluirEtapa(planoId: string, etapaId: string): void {
+    if (this.isConcluindoEtapa) return;
+    this.isConcluindoEtapa = etapaId;
+    this.cdr.detectChanges();
+
+    this.agroTechService.concluirEtapaPlano(planoId, etapaId).subscribe({
+      next: (res: ConcluirEtapaResponse) => {
+        this.isConcluindoEtapa = '';
+        if (this.planoSelecionado && res.planoStatus === 'Concluido') {
+          this.toastService.exibirFeedback('Plano de recuperação concluído!');
+        }
+        this.carregarPlanoDaIntervencao(this.intervencaoSelecionadaId ?? '');
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isConcluindoEtapa = '';
+        this.erroPlano = this.mensagemDeErro(err, 'Não foi possível concluir a etapa.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Reexecuta a sugestão IA após indisponibilidade (retry — RN-036). */
+  tentarSugestaoNovamente(intervencaoId: string): void {
+    this.etapasEditor = [];
+    this.sugerirEtapas(intervencaoId);
+  }
+
+  // ── Painel Recomendações da IA (RN-034/036) ────────────────────────────────
+
+  recomendacoes: RecomendacaoIaItem[] = [];
+  isLoadingRecomendacoes = false;
+  recomendacoesIndisponiveis = false;
+
+  carregarRecomendacoes(): void {
+    if (!this.plantaId) return;
+    this.isLoadingRecomendacoes = this.recomendacoes.length === 0;
+    this.recomendacoesIndisponiveis = false;
+    this.cdr.detectChanges();
+
+    this.agroTechService.getRecomendacoesIa(this.plantaId).subscribe({
+      next: (lista) => {
+        this.recomendacoes = lista || [];
+        this.isLoadingRecomendacoes = false;
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        // ERR-IA-001 (503): estado "IA indisponível" com retry — RN-036
+        this.isLoadingRecomendacoes = false;
+        if (err.status === 503) {
+          this.recomendacoesIndisponiveis = true;
+        }
+        console.error('Erro ao carregar recomendações da IA:', err);
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  /** Evento SignalR §4 → formato da lista do §7.7.2. */
+  private recomendacaoDoEvento(evento: { recomendacao: { id: string; titulo: string; mensagem: string; contexto: ContextoRecomendacaoIa }; geradaEm: string }): RecomendacaoIaItem {
+    return { ...evento.recomendacao, geradaEm: evento.geradaEm };
+  }
+
+  /** Query param abrirPlano (pós-cadastro de planta existente com transplante — RN-032/033). */
+  private tratarQueryAbrirPlano(): void {
+    const intervencaoId = this.route.snapshot.queryParamMap.get('abrirPlano');
+    if (!intervencaoId) {
+      return;
+    }
+    this.secoesAbertas.update((estado) => ({ ...estado, intervencoes: true }));
+    this.intervencaoSelecionadaId = intervencaoId;
+    this.carregarPlanoDaIntervencao(intervencaoId);
+    void this.router.navigate([], { queryParams: { abrirPlano: null }, queryParamsHandling: 'merge' });
+  }
+
   // ─── Layout: seções colapsáveis + filtro de tier (redesign UI) ───────────────
 
-  /** Estado dos acordeões (trilha e conquistas abertas; saúde e ações fechadas). */
+  /** Estado dos acordeões (trilha e conquistas abertas; demais fechadas). */
   readonly secoesAbertas = signal<Record<SecaoGamificacao, boolean>>({
     trilha: true,
     conquistas: true,
     saude: false,
-    acoes: false
+    acoes: false,
+    estadoFisico: false,
+    intervencoes: false,
+    recomendacoes: false
   });
 
   /** Filtro ativo do painel de conquistas; null = todos os tiers. */

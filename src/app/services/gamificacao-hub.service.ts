@@ -3,6 +3,7 @@ import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { AgroTechService } from './agrotech.service';
 import { GamificacaoToastService } from './gamificacao-toast.service';
 import { ConquistaDesbloqueadaEvento } from '../models/gamificacao.models';
+import { RecomendacaoIaEvento } from '../models/recuperacao.models';
 
 /**
  * Cliente SignalR do hub /hubs/telemetria para o evento ConquistaDesbloqueada (RN-022).
@@ -17,6 +18,9 @@ export class GamificacaoHubService {
 
   /** Último evento de conquista recebido (consumido via effect nas telas). */
   readonly ultimaConquista = signal<ConquistaDesbloqueadaEvento | null>(null);
+
+  /** Última recomendação IA recebida em tempo real (RN-034 — consumido via effect no detalhe da planta). */
+  readonly ultimaRecomendacao = signal<RecomendacaoIaEvento | null>(null);
 
   /** Status da conexão com o hub (informativo). */
   readonly conectado = signal(false);
@@ -39,6 +43,14 @@ export class GamificacaoHubService {
         }
         this.ultimaConquista.set(evento);
         this.toastService.exibirConquista(evento);
+      });
+
+      conexao.on('RecomendacaoIa', (evento: RecomendacaoIaEvento) => {
+        if (!evento || !evento.recomendacao) {
+          return;
+        }
+        this.ultimaRecomendacao.set(evento);
+        this.toastService.exibirRecomendacao(evento);
       });
 
       conexao.onreconnected(() => this.conectado.set(true));

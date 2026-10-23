@@ -1,0 +1,254 @@
+<div class="container pb-5">
+  <!-- Cabeçalho (UI_SPEC §5.1) -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-leaf text-agrotech-primary"></i> Cadastrar planta existente</h1>
+      <p class="page-subtitulo">Comece a jornada pelo estágio em que a planta está hoje, sem checklist de semente</p>
+    </div>
+    <div class="page-acoes">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium" routerLink="/plantas">
+        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+      </button>
+    </div>
+  </div>
+
+  <!-- Badge informativo permanente (UI_SPEC §5.4 — RN-026) -->
+  <div class="alert alert-info d-flex align-items-start gap-2 rounded-3 py-2 px-3 small">
+    <i class="fa-solid fa-circle-info mt-1"></i>
+    <span>Você está cadastrando uma planta que já existe — a jornada começa no estágio atual, sem checklist de semente.</span>
+  </div>
+
+  <!-- Erro geral -->
+  @if (erroGeral()) {
+    <div class="alert alert-danger rounded-3 py-2 px-3 small" role="alert">
+      <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ erroGeral() }}
+    </div>
+  }
+
+  <form (ngSubmit)="salvar()" autocomplete="off">
+    <!-- ═══ SEÇÃO 1: Identificação (UI_SPEC §5.2) ═══ -->
+    <div class="section-card">
+      <h5 class="fw-bold text-dark mb-1"><span class="numero-secao">1</span> Identificação</h5>
+      <p class="text-muted small mb-3">Apelido, espécie e o estágio em que a planta está hoje.</p>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-secondary" for="apelidoLote">Apelido do vaso/planta *</label>
+          <input id="apelidoLote" type="text" class="form-control rounded-3" maxlength="100"
+                 [(ngModel)]="apelidoLote" name="apelidoLote" placeholder="Ex.: Boldo - Vaso grande" />
+          @if (errosCampo()['apelidoLote']) {
+            <div class="text-danger small mt-1">{{ errosCampo()['apelidoLote'] }}</div>
+          }
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-secondary" for="especieBusca">Espécie *</label>
+          <div class="position-relative">
+            <input id="especieBusca" type="text" class="form-control rounded-3"
+                   [(ngModel)]="especieBusca" name="especieBusca"
+                   placeholder="Digite para buscar no catálogo"
+                   [ngModelOptions]="{ standalone: true }"
+                   autocomplete="off"
+                   [readonly]="!!especieSelecionada"
+                   (focus)="sugestoesAbertas.set(true)" />
+            @if (especieSelecionada) {
+              <button type="button" class="btn btn-sm btn-link text-danger p-0 position-absolute top-50 end-0 translate-middle-y me-2"
+                      (click)="limparEspecie()" aria-label="Limpar espécie">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            }
+            @if (sugestoesAbertas() && !especieSelecionada) {
+              <div class="lista-sugestoes shadow">
+                @for (especie of sugestoesFiltradas; track especie.id) {
+                  <button type="button" class="lista-sugestoes-item" (click)="selecionarEspecie(especie)">
+                    <span class="fw-semibold">{{ especie.nomePopular }}</span>
+                    @if (especie.nomeCientifico) {
+                      <span class="text-muted fst-italic small ms-1">({{ especie.nomeCientifico }})</span>
+                    }
+                  </button>
+                } @empty {
+                  <div class="p-3 text-muted small">
+                    Nenhuma espécie encontrada. <a routerLink="/plantas/nova">Cadastre a espécie no catálogo</a> primeiro.
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          @if (errosCampo()['especie']) {
+            <div class="text-danger small mt-1">{{ errosCampo()['especie'] }}</div>
+          }
+        </div>
+
+        <div class="col-12">
+          <label class="form-label small fw-bold text-secondary">Estágio atual — como ela está hoje? *</label>
+          <div class="stepper-estagio d-flex flex-wrap gap-2" role="radiogroup" aria-label="Estágio atual da planta">
+            @for (estagio of ORDEM_ESTAGIOS; track estagio) {
+              <button type="button" class="stepper-estagio-item" role="radio"
+                      [class.selecionado]="estagioAtual === estagio"
+                      [attr.aria-checked]="estagioAtual === estagio"
+                      (click)="estagioAtual = estagio">
+                <i class="fa-solid" [ngClass]="ESTAGIO_VISUAL[estagio].icone"></i>
+                <span>{{ ESTAGIO_VISUAL[estagio].label }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <label class="form-label small fw-bold text-secondary" for="dispositivoId">Dispositivo IoT (opcional)</label>
+          <select id="dispositivoId" class="form-select rounded-3" [(ngModel)]="dispositivoId" name="dispositivoId">
+            <option [ngValue]="null">Sem sensor — progresso por jornada e ações manuais</option>
+            @for (disp of dispositivos(); track disp.id) {
+              <option [ngValue]="disp.id">{{ disp.identificadorHardware }}</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SEÇÃO 2: Estado físico atual (UI_SPEC §5.2 — RN-028/029) ═══ -->
+    <div class="section-card">
+      <h5 class="fw-bold text-dark mb-1"><span class="numero-secao">2</span> Estado físico atual</h5>
+      <p class="text-muted small mb-3">
+        Marque os sintomas por parte da planta e registre observações livres — a IA estrutura o registro.
+        Fotos são anexos documentais opcionais.
+      </p>
+
+      <div class="row g-3">
+        @for (grupo of PARTES_CHECKLIST; track grupo.parte) {
+          <div class="col-12 col-md-6">
+            <div class="parte-checklist">
+              <div class="parte-titulo small fw-bold text-dark mb-2">
+                <i class="fa-solid me-1" [ngClass]="grupo.icone"></i> {{ grupo.label }}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                @for (opcao of grupo.opcoes; track opcao) {
+                  <button type="button" class="chip-sintoma"
+                          [class.selecionado]="parteSelecionada(grupo.parte, opcao)"
+                          [attr.aria-pressed]="parteSelecionada(grupo.parte, opcao)"
+                          (click)="alternarSintoma(grupo.parte, opcao)">
+                    {{ opcao }}
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="col-12">
+          <label class="form-label small fw-bold text-secondary" for="observacoesLivres">Observações livres (opcional)</label>
+          <textarea id="observacoesLivres" class="form-control rounded-3" rows="3" name="observacoesLivres"
+                    [(ngModel)]="observacoesLivres"
+                    placeholder="Ex.: folhas comidas por caramujos, algumas secas e murchas"></textarea>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label small fw-bold text-secondary">
+            Fotos (opcional — documentação datada, sem análise automatizada)
+          </label>
+          <input id="fotos-existente-input" type="file" accept="image/*" multiple class="d-none"
+                 (change)="onFotosSelecionadas($event)" />
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            @for (foto of fotos(); track $index) {
+              <div class="foto-miniatura position-relative">
+                <img [src]="foto" alt="Anexo selecionado" class="foto-thumb" />
+                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle p-0 foto-remover"
+                        (click)="removerFoto($index)" aria-label="Remover foto">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            }
+            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" (click)="abrirSeletorFotos()"
+                    [disabled]="fotosCarregando()">
+              <i class="fa-solid" [ngClass]="fotosCarregando() ? 'fa-spinner fa-spin' : 'fa-camera'"></i>
+              {{ fotosCarregando() ? 'Carregando...' : 'Adicionar fotos' }}
+            </button>
+          </div>
+        </div>
+
+        @if (errosCampo()['checklist']) {
+          <div class="col-12">
+            <div class="text-danger small">{{ errosCampo()['checklist'] }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ═══ SEÇÃO 3: Histórico inicial (opcional — UI_SPEC §5.2, RN-030/031/032) ═══ -->
+    <div class="section-card">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-1">
+        <div>
+          <h5 class="fw-bold text-dark mb-1"><span class="numero-secao">3</span> Histórico inicial (opcional)</h5>
+          <p class="text-muted small mb-0">
+            Registre intervenções anteriores ao cadastro (ex.: um transplante de recuperação feito antes de entrar no sistema).
+          </p>
+        </div>
+        <button type="button" class="btn btn-outline-success btn-sm rounded-pill px-3" (click)="adicionarIntervencao()">
+          <i class="fa-solid fa-plus me-1"></i> Adicionar intervenção
+        </button>
+      </div>
+
+      @for (iv of intervencoes(); track $index; let i = $index) {
+        <div class="intervencao-linha border rounded-3 p-3 mb-3 bg-light">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold small text-dark"><i class="fa-solid fa-shovel text-agrotech-primary me-1"></i> Intervenção {{ i + 1 }}</span>
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removerIntervencao(i)" aria-label="Remover intervenção">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-secondary" [for]="'tipo-' + i">Tipo *</label>
+              <select [id]="'tipo-' + i" class="form-select" [(ngModel)]="intervencoes()[i].tipo" [name]="'tipo-' + i">
+                @for (tipo of ORDEM_TIPOS_INTERVENCAO; track tipo) {
+                  <option [value]="tipo">{{ TIPO_INTERVENCAO_VISUAL[tipo].label }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold text-secondary" [for]="'data-' + i">Data do evento *</label>
+              <input [id]="'data-' + i" type="date" class="form-control" [(ngModel)]="intervencoes()[i].dataEvento"
+                     [name]="'data-' + i" [max]="hojeIso" />
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" [id]="'aprox-' + i"
+                       [(ngModel)]="intervencoes()[i].dataAproximada" [name]="'aprox-' + i" />
+                <label class="form-check-label small text-secondary" [for]="'aprox-' + i">Não sei a data exata (data aproximada)</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-bold text-secondary" [for]="'detalhes-' + i">Detalhes (materiais e técnicas — opcional)</label>
+              <textarea [id]="'detalhes-' + i" class="form-control" rows="2" [(ngModel)]="intervencoes()[i].detalhesLivres"
+                        [name]="'detalhes-' + i"
+                        placeholder="Ex.: canela nos cortes, drenagem com garrafa PET, cacos cerâmicos e tecido de poliéster"></textarea>
+            </div>
+            @if (errosCampo()['intervencao-' + i]) {
+              <div class="col-12">
+                <div class="text-danger small">{{ errosCampo()['intervencao-' + i] }}</div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (temTransplanteNoHistorico()) {
+        <div class="alert alert-info py-2 px-3 rounded-3 small mb-0">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Transplante no histórico — após salvar, ofereceremos a criação de um plano de recuperação com sugestão da IA.
+          A janela de verificação de 7 dias conta a partir do registro no sistema.
+        </div>
+      }
+    </div>
+
+    <!-- Ações (rótulos genéricos — AGENTS.md) -->
+    <div class="d-flex justify-content-end gap-2 mb-4 mobile-stack-actions">
+      <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" routerLink="/plantas">Cancelar</button>
+      <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm fw-semibold" [disabled]="salvando()">
+        <i class="fa-solid" [ngClass]="salvando() ? 'fa-spinner fa-spin me-1' : 'fa-floppy-disk me-1'"></i>
+        {{ salvando() ? 'Salvando...' : 'Salvar' }}
+      </button>
+    </div>
+  </form>
+</div>

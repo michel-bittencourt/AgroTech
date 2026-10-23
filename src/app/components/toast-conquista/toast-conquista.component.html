@@ -29,3 +29,24 @@
     <i class="fa-solid fa-bolt text-warning me-1"></i> {{ feedback }}
   </div>
 }
+
+<!-- Toast discreto "Nova recomendação da IA" (RN-034 — mesmo padrão do toast de conquista) -->
+@if (toastService.recomendacaoAtual(); as ev) {
+  <div class="toast-recomendacao shadow-lg" role="status" aria-live="polite">
+    <div class="toast-recomendacao-icone">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+    </div>
+    <div class="toast-recomendacao-corpo">
+      <div class="toast-recomendacao-titulo">
+        Nova recomendação da IA
+        <button type="button" class="toast-conquista-fechar" (click)="toastService.ocultarRecomendacao()" aria-label="Fechar">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="toast-recomendacao-texto">{{ ev.recomendacao.titulo }}</div>
+      <a class="toast-recomendacao-link" [routerLink]="['/plantas', ev.plantaId]" (click)="toastService.ocultarRecomendacao()">
+        Ver {{ ev.plantaApelido || 'planta' }} <i class="fa-solid fa-chevron-right ms-1 small"></i>
+      </a>
+    </div>
+  </div>
+}

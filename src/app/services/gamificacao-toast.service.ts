@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { ConquistaDesbloqueadaEvento } from '../models/gamificacao.models';
+import { RecomendacaoIaEvento } from '../models/recuperacao.models';
 
 /** Duração do toast de conquista em tela (RN-022 — some sozinho após ~5s). */
 const DURACAO_TOAST_MS = 5000;
@@ -11,12 +12,16 @@ const DURACAO_FEEDBACK_MS = 4000;
 export class GamificacaoToastService {
   private timeoutToast: ReturnType<typeof setTimeout> | null = null;
   private timeoutFeedback: ReturnType<typeof setTimeout> | null = null;
+  private timeoutRecomendacao: ReturnType<typeof setTimeout> | null = null;
 
   /** Última conquista recebida (SignalR ou fallback de ação) exibida no toast global. */
   readonly toastAtual = signal<ConquistaDesbloqueadaEvento | null>(null);
 
   /** Feedback textual de ação manual (ex.: "+35 XP (bônus)"). */
   readonly feedbackAcao = signal<string | null>(null);
+
+  /** Toast discreto "Nova recomendação da IA" (RN-034 — mesmo padrão do toast de conquista). */
+  readonly recomendacaoAtual = signal<RecomendacaoIaEvento | null>(null);
 
   exibirConquista(evento: ConquistaDesbloqueadaEvento): void {
     if (!evento || !evento.conquista) {
@@ -38,6 +43,25 @@ export class GamificacaoToastService {
     }
     this.feedbackAcao.set(mensagem);
     this.timeoutFeedback = setTimeout(() => this.feedbackAcao.set(null), DURACAO_FEEDBACK_MS);
+  }
+
+  exibirRecomendacao(evento: RecomendacaoIaEvento): void {
+    if (!evento || !evento.recomendacao) {
+      return;
+    }
+    if (this.timeoutRecomendacao) {
+      clearTimeout(this.timeoutRecomendacao);
+    }
+    this.recomendacaoAtual.set(evento);
+    this.timeoutRecomendacao = setTimeout(() => this.ocultarRecomendacao(), DURACAO_TOAST_MS);
+  }
+
+  ocultarRecomendacao(): void {
+    if (this.timeoutRecomendacao) {
+      clearTimeout(this.timeoutRecomendacao);
+      this.timeoutRecomendacao = null;
+    }
+    this.recomendacaoAtual.set(null);
   }
 
   ocultarConquista(): void {

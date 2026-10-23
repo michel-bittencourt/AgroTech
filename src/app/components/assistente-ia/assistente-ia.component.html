@@ -1,0 +1,130 @@
+<div class="container pb-5">
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-robot text-agrotech-primary"></i> Assistente IA</h1>
+      <p class="page-subtitulo">
+        @if (apelidoPlanta) {
+          Diagnóstico e orientação de manejo para {{ apelidoPlanta }}
+        } @else {
+          Diagnóstico e orientação de manejo em linguagem de negócio
+        }
+      </p>
+    </div>
+    <div class="page-acoes">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium" routerLink="/plantas">
+        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- Chat (UI_SPEC §5.6) -->
+    <div class="col-lg-8">
+      <div class="section-card d-flex flex-column chat-painel">
+        @if (mensagens().length === 0) {
+          <div class="empty-state">
+            <i class="fa-solid fa-comments empty-icone"></i>
+            <p class="empty-texto mb-1">Pergunte sobre a planta — a IA considera telemetria, estado físico, intervenções, plano de recuperação e o perfil da espécie.</p>
+          </div>
+        }
+
+        <div class="chat-historico">
+          @for (msg of mensagens(); track $index) {
+            <div class="chat-mensagem" [class.ia]="msg.autor === 'ia'">
+              <div class="chat-bolha" [class.ia]="msg.autor === 'ia'">
+                {{ msg.texto }}
+                @if (msg.autor === 'ia' && msg.geradaEm) {
+                  <div class="chat-meta small text-muted">{{ dataHora(msg.geradaEm) }}</div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (consultando()) {
+            <div class="chat-mensagem ia">
+              <div class="chat-bolha ia">
+                <i class="fa-solid fa-circle-notch fa-spin me-1"></i> Consultando a IA...
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Estado IA indisponível com retry (RN-036 — UI_SPEC §4.4) -->
+        @if (iaIndisponivel()) {
+          <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3 py-2 px-3 small mb-2">
+            <span>
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>
+              IA indisponível — seus dados estão salvos e os alertas padrão seguem ativos.
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" (click)="tentarNovamente()" [disabled]="consultando()">
+              <i class="fa-solid fa-rotate-right me-1"></i> Tentar novamente
+            </button>
+          </div>
+        }
+
+        @if (erroGeral()) {
+          <div class="alert alert-danger py-2 px-3 rounded-3 small mb-2" role="alert">{{ erroGeral() }}</div>
+        }
+
+        <!-- Campo de pergunta livre -->
+        <div class="chat-input d-flex gap-2 mt-auto">
+          <input type="text" class="form-control rounded-pill" placeholder="Ex.: As folhas estão murchando depois do transplante. Devo regar agora?"
+                 [(ngModel)]="pergunta" name="pergunta" (keyup.enter)="perguntar()" [disabled]="consultando()"
+                 aria-label="Pergunta para a IA" />
+          <button type="button" class="btn btn-success rounded-pill px-4" (click)="perguntar()" [disabled]="consultando() || !pergunta.trim()">
+            <i class="fa-solid fa-paper-plane me-1"></i> Perguntar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Painel lateral: fontes consideradas (RN-035) -->
+    <div class="col-lg-4">
+      <div class="section-card">
+        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-layer-group text-agrotech-primary me-1"></i> Fontes da última resposta</h6>
+
+        @if (fontesUltimaResposta(); as fontes) {
+          <ul class="list-unstyled fontes-lista mb-0">
+            @for (chave of CHAVES_FONTES; track chave) {
+              <li class="d-flex align-items-center gap-2 py-1">
+                <i class="fa-solid" [ngClass]="fonteAtiva(fontes, chave) ? 'fa-circle-check text-success' : 'fa-circle-xmark text-secondary opacity-50'"></i>
+                <span [class.text-muted]="!fonteAtiva(fontes, chave)">{{ rotuloFonte(fontes, chave) }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="text-muted small mb-0">
+            As fontes consideradas pela IA aparecem aqui após a primeira resposta.
+          </p>
+        }
+      </div>
+
+      <!-- Recomendações proativas vigentes (RN-034) -->
+      <div class="section-card">
+        <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> Recomendações vigentes</h6>
+
+        @if (recomendacoesIndisponiveis()) {
+          <div class="alert alert-warning py-2 px-3 rounded-3 small d-flex align-items-center justify-content-between flex-wrap gap-2 mb-0">
+            <span><i class="fa-solid fa-triangle-exclamation me-1"></i> IA indisponível.</span>
+            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" (click)="carregarRecomendacoes()">
+              <i class="fa-solid fa-rotate-right me-1"></i> Tentar novamente
+            </button>
+          </div>
+        } @else if (recomendacoes().length === 0) {
+          <p class="text-muted small mb-0">Nenhuma recomendação proativa no momento.</p>
+        } @else {
+          @for (rec of recomendacoes(); track rec.id) {
+            <div class="recomendacao-card border rounded-3 p-3 mb-2">
+              <div class="fw-bold small text-dark">{{ rec.titulo }}</div>
+              <div class="small text-secondary mt-1">{{ rec.mensagem }}</div>
+              <div class="mt-2 d-flex flex-wrap align-items-center gap-2">
+                <span class="badge bg-light text-dark border rounded-pill small">{{ CONTEXTO_LABEL[rec.contexto] }}</span>
+                <span class="text-muted small">{{ dataHora(rec.geradaEm) }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+</div>

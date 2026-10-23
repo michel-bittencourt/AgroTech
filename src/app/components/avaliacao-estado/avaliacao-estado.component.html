@@ -1,0 +1,87 @@
+<div class="container pb-5">
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-stethoscope text-agrotech-primary"></i> Registrar estado físico</h1>
+      <p class="page-subtitulo">
+        @if (apelidoPlanta) {
+          {{ apelidoPlanta }} — checklist por parte da planta + observações livres
+        } @else {
+          Checklist por parte da planta + observações livres
+        }
+      </p>
+    </div>
+    <div class="page-acoes">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium" routerLink="/plantas">
+        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+      </button>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="row g-3">
+      @for (grupo of PARTES_CHECKLIST; track grupo.parte) {
+        <div class="col-12 col-md-6">
+          <div class="parte-checklist">
+            <div class="parte-titulo small fw-bold text-dark mb-2">
+              <i class="fa-solid me-1" [ngClass]="grupo.icone"></i> {{ grupo.label }}
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              @for (opcao of grupo.opcoes; track opcao) {
+                <button type="button" class="chip-sintoma"
+                        [class.selecionado]="parteSelecionada(grupo.parte, opcao)"
+                        [attr.aria-pressed]="parteSelecionada(grupo.parte, opcao)"
+                        (click)="alternarSintoma(grupo.parte, opcao)">
+                  {{ opcao }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <div class="col-12">
+        <label class="form-label small fw-bold text-secondary" for="observacoesLivres">Observações livres (opcional)</label>
+        <textarea id="observacoesLivres" class="form-control rounded-3" rows="3" [(ngModel)]="observacoesLivres"
+                  placeholder="Ex.: folhas comidas por caramujos, algumas secas e murchas"></textarea>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label small fw-bold text-secondary">
+          Fotos (opcional — documentação datada, sem análise automatizada)
+        </label>
+        <input id="fotos-avaliacao-input" type="file" accept="image/*" multiple class="d-none"
+               (change)="onFotosSelecionadas($event)" />
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          @for (foto of fotos(); track $index) {
+            <div class="foto-miniatura position-relative">
+              <img [src]="foto" alt="Anexo selecionado" class="foto-thumb" />
+              <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 rounded-circle p-0 foto-remover"
+                      (click)="removerFoto($index)" aria-label="Remover foto">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          }
+          <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" (click)="abrirSeletorFotos()"
+                  [disabled]="fotosCarregando()">
+            <i class="fa-solid" [ngClass]="fotosCarregando() ? 'fa-spinner fa-spin' : 'fa-camera'"></i>
+            {{ fotosCarregando() ? 'Carregando...' : 'Adicionar fotos' }}
+          </button>
+        </div>
+      </div>
+
+      @if (erroChecklist()) {
+        <div class="col-12">
+          <div class="text-danger small">{{ erroChecklist() }}</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mb-4 mobile-stack-actions">
+    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" routerLink="/plantas">Cancelar</button>
+    <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm fw-semibold" (click)="salvar()" [disabled]="salvando()">
+      <i class="fa-solid" [ngClass]="salvando() ? 'fa-spinner fa-spin me-1' : 'fa-floppy-disk me-1'"></i>
+      {{ salvando() ? 'Salvando...' : 'Salvar' }}
+    </button>
+  </div>
+</div>

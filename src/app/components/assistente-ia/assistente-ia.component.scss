@@ -1,0 +1,67 @@
+// Chat do assistente (UI_SPEC §5.6)
+.chat-painel {
+  min-height: 480px;
+}
+
+.chat-historico {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  flex-grow: 1;
+}
+
+.chat-mensagem {
+  display: flex;
+
+  &.ia {
+    justify-content: flex-start;
+  }
+
+  &:not(.ia) {
+    justify-content: flex-end;
+  }
+}
+
+.chat-bolha {
+  max-width: 80%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 1rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  background-color: var(--neutral-100, #f8f9fa);
+  border: 1px solid var(--neutral-200, #e9ecef);
+  color: #212529;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  &.ia {
+    background: linear-gradient(135deg, #f4fbf7 0%, #e9f7ee 100%);
+    border-color: #1e5e3a66;
+  }
+}
+
+.chat-meta {
+  margin-top: 0.3rem;
+}
+
+.chat-input {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--neutral-200, #e9ecef);
+}
+
+// Painel de fontes consideradas (RN-035)
+.fontes-lista {
+  font-size: 0.85rem;
+}
+
+// Recomendações vigentes (RN-034)
+.recomendacao-card {
+  background-color: #fdfbff;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}

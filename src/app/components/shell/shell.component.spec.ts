@@ -22,7 +22,8 @@ describe('ShellComponent', () => {
       providers: [
         provideRouter([
           { path: 'plantas', component: DummyJardimComponent },
-          { path: 'plantas/nova', component: DummyNovaComponent }
+          { path: 'plantas/nova', component: DummyNovaComponent },
+          { path: 'conquistas', component: DummyJardimComponent }
         ]),
         provideHttpClient(),
         provideHttpClientTesting()
@@ -133,13 +134,13 @@ describe('ShellComponent', () => {
     expect(f.componentInstance['itemEstaAtivo'](novaPlanta)).toBe(true);
   });
 
-  it('marca "Conquistas" ativo apenas com o query param painel=conquistas', async () => {
+  it('marca "Conquistas" ativo apenas na rota dedicada /conquistas', async () => {
     const f = criarComponente();
     const itens = f.componentInstance['gruposMenu'].flatMap((g) => g.itens);
     const conquistas = itens.find((i) => i.rotulo === 'Conquistas')!;
     const visaoGeral = itens.find((i) => i.rotulo === 'Visão geral')!;
 
-    await router.navigate(['/plantas'], { queryParams: { painel: 'conquistas' } });
+    await router.navigate(['/conquistas']);
     f.detectChanges();
     expect(f.componentInstance['itemEstaAtivo'](conquistas)).toBe(true);
     expect(f.componentInstance['itemEstaAtivo'](visaoGeral)).toBe(false);

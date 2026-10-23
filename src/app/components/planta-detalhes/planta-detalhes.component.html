@@ -26,6 +26,11 @@
       <p class="page-subtitulo">
         {{ planta.especieNomePopular }}
         <span *ngIf="planta.especieNomeCientifico" class="fst-italic">({{ planta.especieNomeCientifico }})</span>
+        @if (planta.origemDesconhecida) {
+          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill ms-2 align-middle" title="Cadastrada sem origem conhecida — jornada iniciada no estágio atual">
+            <i class="fa-solid fa-leaf me-1"></i> Planta existente
+          </span>
+        }
       </p>
     </div>
     <div class="page-acoes">
@@ -319,6 +324,339 @@
       </div>
     }
   </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Estado Físico (RN-028/029 — UI_SPEC §4.2) ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().estadoFisico">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('estadoFisico')" [attr.aria-expanded]="secoesAbertas().estadoFisico" aria-controls="secao-estado-fisico">
+      <i class="fa-solid fa-stethoscope text-agrotech-primary"></i>
+      <span>Estado físico</span>
+      @if (ultimaAvaliacao; as ultima) {
+        <span class="text-muted fw-normal small">última: {{ dataHora(ultima.dataAvaliacao) }}</span>
+      } @else {
+        <span class="text-muted fw-normal small">sem registros</span>
+      }
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().estadoFisico) {
+      <div class="acordeao-corpo" id="secao-estado-fisico">
+        <!-- Última avaliação resumida (UI_SPEC §4.2) -->
+        @if (ultimaAvaliacao; as ultima) {
+          <div class="avaliacao-resumo border rounded-3 p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+              <span class="fw-bold small text-dark">Última avaliação — {{ dataHora(ultima.dataAvaliacao) }}</span>
+            </div>
+            @if (partesComSintoma(ultima).length > 0) {
+              <div class="d-flex flex-wrap gap-2 mb-2">
+                @for (parte of partesComSintoma(ultima); track parte.parte) {
+                  <span class="badge bg-light text-dark border rounded-pill small">
+                    {{ parte.parte }}: {{ parte.sintomas.join(', ') }}
+                  </span>
+                }
+              </div>
+            }
+            @if (ultima.observacoesLivres) {
+              <p class="small text-secondary mb-1">{{ ultima.observacoesLivres }}</p>
+            }
+            @if (ultima.interpretacaoIa) {
+              <div class="interpreta-ia border-start border-3 ps-2 py-1 small text-dark">
+                <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {{ ultima.interpretacaoIa }}
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Histórico completo -->
+        @if (isLoadingAvaliacoes) {
+          <div class="skeleton mb-2"></div>
+          <div class="skeleton skeleton-curto"></div>
+        } @else if (avaliacoes.length === 0) {
+          <div class="empty-state">
+            <i class="fa-solid fa-stethoscope empty-icone"></i>
+            <p class="empty-texto mb-3">Nenhum registro de estado físico ainda</p>
+          </div>
+        } @else {
+          @for (av of avaliacoes; track av.id) {
+            <div class="avaliacao-historico-item border-bottom pb-3 mb-3">
+              <div class="d-flex justify-content-between align-items-center flex-wrap gap-1 mb-1">
+                <span class="fw-semibold small text-dark"><i class="fa-regular fa-clock me-1 text-muted"></i>{{ dataHora(av.dataAvaliacao) }}</span>
+                @if (av.interpretacaoIa) {
+                  <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small">interpretado pela IA</span>
+                }
+              </div>
+              @if (partesComSintoma(av).length > 0) {
+                <div class="d-flex flex-wrap gap-1 mb-1">
+                  @for (parte of partesComSintoma(av); track parte.parte) {
+                    <span class="badge bg-light text-dark border rounded-pill small">{{ parte.parte }}: {{ parte.sintomas.join(', ') }}</span>
+                  }
+                </div>
+              }
+              @if (av.observacoesLivres) {
+                <div class="small text-secondary mb-1">{{ av.observacoesLivres }}</div>
+              }
+              @if (av.interpretacaoIa) {
+                <div class="interpreta-ia border-start border-3 ps-2 py-1 small text-dark mb-1">
+                  <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {{ av.interpretacaoIa }}
+                </div>
+              }
+              @if (av.fotos && av.fotos.length > 0) {
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                  @for (foto of av.fotos; track $index) {
+                    <button type="button" class="foto-miniatura-botao p-0 border-0 bg-transparent" (click)="ampliarFoto(foto)" aria-label="Ampliar foto">
+                      <img [src]="urlFotoAvaliacao(foto)" alt="Foto de avaliação" class="foto-thumb" />
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+
+        <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" routerLink="/plantas/{{ plantaId }}/avaliacao">
+          <i class="fa-solid fa-plus me-1"></i> Registrar estado físico
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Intervenções e Plano de Recuperação (RN-030..033) ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().intervencoes">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('intervencoes')" [attr.aria-expanded]="secoesAbertas().intervencoes" aria-controls="secao-intervencoes">
+      <i class="fa-solid fa-shovel text-agrotech-primary"></i>
+      <span>Intervenções e plano de recuperação</span>
+      @if (intervencoes.length) {
+        <span class="text-muted fw-normal small">{{ intervencoes.length }} registro{{ intervencoes.length > 1 ? 's' : '' }}</span>
+      } @else {
+        <span class="text-muted fw-normal small">sem registros</span>
+      }
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().intervencoes) {
+      <div class="acordeao-corpo" id="secao-intervencoes">
+        @if (isLoadingIntervencoes) {
+          <div class="skeleton mb-2"></div>
+          <div class="skeleton skeleton-curto"></div>
+        } @else if (intervencoes.length === 0) {
+          <div class="empty-state">
+            <i class="fa-solid fa-shovel empty-icone"></i>
+            <p class="empty-texto mb-3">Nenhuma intervenção registrada ainda</p>
+          </div>
+        } @else {
+          <!-- Timeline vertical (UI_SPEC §4.2 — RN-030/031) -->
+          <div class="timeline-intervencoes mb-3">
+            @for (iv of intervencoes; track iv.id) {
+              <div class="timeline-int-item" [class.selecionada]="intervencaoSelecionadaId === iv.id">
+                <div class="timeline-int-marcador">
+                  <i class="fa-solid" [ngClass]="TIPO_INTERVENCAO_VISUAL[iv.tipo].icone"></i>
+                </div>
+                <div class="timeline-int-conteudo">
+                  <button type="button" class="btn btn-link p-0 text-start timeline-int-titulo" (click)="selecionarIntervencao(iv)"
+                          [attr.aria-expanded]="intervencaoSelecionadaId === iv.id">
+                    {{ TIPO_INTERVENCAO_VISUAL[iv.tipo].label }} — {{ iv.dataEvento | date:'dd/MM/yyyy' }}
+                  </button>
+                  @if (iv.dataAproximada) {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill small ms-2">data aproximada</span>
+                  }
+                  @if (transplanteRetroativo(iv)) {
+                    <div class="nota-retroativa small text-muted mt-1">
+                      <i class="fa-regular fa-clock me-1"></i> Janela de verificação contando do registro ({{ dataHora(iv.criadoEm) }})
+                    </div>
+                  }
+                  @if (iv.detalhesLivres) {
+                    <div class="small text-secondary mt-1">{{ iv.detalhesLivres }}</div>
+                  }
+                  @if (iv.estruturaIa) {
+                    <div class="interpreta-ia border-start border-3 ps-2 py-1 small text-dark mt-1">
+                      <i class="fa-solid fa-wand-magic-sparkles text-warning me-1"></i> {{ iv.estruturaIa }}
+                    </div>
+                  }
+
+                  <!-- Plano de recuperação da intervenção selecionada (RN-033) -->
+                  @if (intervencaoSelecionadaId === iv.id) {
+                    <div class="plano-painel border rounded-3 p-3 mt-3 bg-light">
+                      @if (isLoadingPlano) {
+                        <div class="skeleton mb-2"></div>
+                        <div class="skeleton skeleton-curto"></div>
+                      } @else if (planoSelecionado; as plano) {
+                        <!-- Checklist do plano ativo (etapas com duração + progresso) -->
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                          <span class="fw-bold small text-dark">
+                            <i class="fa-solid fa-list-check text-agrotech-primary me-1"></i> Plano de recuperação
+                            @if (plano.origemEtapas === 'SugeridaIa') {
+                              <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small ms-1">etapas sugeridas pela IA</span>
+                            }
+                          </span>
+                          <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill small">
+                            {{ plano.progresso.concluidas }}/{{ plano.progresso.total }} concluídas
+                          </span>
+                        </div>
+
+                        @for (etapa of plano.etapas; track etapa.id) {
+                          <label class="etapa-linha d-flex align-items-center gap-2 py-1" [class.concluida]="etapa.statusEtapa === 'Concluida'">
+                            <input type="checkbox" class="form-check-input mt-0" [checked]="etapa.statusEtapa === 'Concluida'"
+                                   [disabled]="isConcluindoEtapa === etapa.id || plano.status !== 'Ativo'"
+                                   (change)="concluirEtapa(plano.id, etapa.id)" />
+                            <span class="small flex-grow-1">
+                              <strong>{{ etapa.ordem }}.</strong> {{ etapa.descricao }}
+                              <span class="text-muted">({{ etapa.duracaoDias }} dia{{ etapa.duracaoDias > 1 ? 's' : '' }})</span>
+                            </span>
+                            @if (etapa.concluidaEm) {
+                              <span class="text-success small"><i class="fa-solid fa-check me-1"></i>{{ dataHora(etapa.concluidaEm) }}</span>
+                            }
+                          </label>
+                        }
+
+                        @if (plano.status === 'Concluido') {
+                          <div class="alert alert-success py-1 px-2 rounded-3 small mt-2 mb-0">
+                            <i class="fa-solid fa-circle-check me-1"></i> Plano concluído — todas as etapas realizadas.
+                          </div>
+                        }
+                      } @else {
+                        <!-- Sem plano: oferta de criação (UI_SPEC §4.2 — RN-033) -->
+                        <div class="small text-secondary mb-2">
+                          <i class="fa-solid fa-circle-info text-info me-1"></i>
+                          Nenhum plano de recuperação para esta intervenção — crie etapas guiadas (ex.: "7 dias na sombra" → "retorno gradual ao sol").
+                        </div>
+
+                        @if (iaIndisponivelPlano) {
+                          <div class="alert alert-warning py-2 px-3 rounded-3 small d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                            <span><i class="fa-solid fa-triangle-exclamation me-1"></i> Sugestão de etapas indisponível — você pode criar o plano manualmente.</span>
+                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" (click)="tentarSugestaoNovamente(iv.id)" [disabled]="sugerindoEtapas">
+                              <i class="fa-solid fa-rotate-right me-1"></i> Tentar novamente
+                            </button>
+                          </div>
+                        }
+
+                        <!-- Editor de etapas (ajuste antes de ativar) -->
+                        @if (etapasEditor.length > 0) {
+                          <div class="etapas-editor mb-2">
+                            @for (etapa of etapasEditor; track $index; let i = $index) {
+                              <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge bg-secondary rounded-pill">{{ i + 1 }}</span>
+                                <input type="text" class="form-control form-control-sm" placeholder="Descrição da etapa"
+                                       [(ngModel)]="etapa.descricao" [name]="'etapa-desc-' + iv.id + '-' + i" />
+                                <div class="input-group input-group-sm" style="max-width: 150px;">
+                                  <input type="number" min="1" class="form-control" [(ngModel)]="etapa.duracaoDias"
+                                         [name]="'etapa-dias-' + iv.id + '-' + i" aria-label="Duração em dias" />
+                                  <span class="input-group-text">d</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" (click)="removerEtapa(i)" aria-label="Remover etapa">
+                                  <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                              </div>
+                            }
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 mb-2" (click)="adicionarEtapa()">
+                              <i class="fa-solid fa-plus me-1"></i> Etapa
+                            </button>
+                          </div>
+                        }
+
+                        <div class="d-flex flex-wrap gap-2">
+                          @if (etapasEditor.length === 0) {
+                            <button type="button" class="btn btn-sm btn-success rounded-pill px-3" (click)="sugerirEtapas(iv.id)" [disabled]="sugerindoEtapas">
+                              <i class="fa-solid" [ngClass]="sugerindoEtapas ? 'fa-spinner fa-spin me-1' : 'fa-wand-magic-sparkles me-1'"></i>
+                              {{ sugerindoEtapas ? 'Sugerindo...' : 'Sugerir etapas com IA' }}
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" (click)="iniciarPlanoManual()">
+                              <i class="fa-solid fa-pen me-1"></i> Criar manualmente
+                            </button>
+                          } @else {
+                            <button type="button" class="btn btn-sm btn-success rounded-pill px-4" (click)="salvarPlano(iv.id)" [disabled]="criandoPlano">
+                              <i class="fa-solid" [ngClass]="criandoPlano ? 'fa-spinner fa-spin me-1' : 'fa-play me-1'"></i>
+                              {{ criandoPlano ? 'Ativando...' : 'Salvar e ativar plano' }}
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" (click)="fecharPlano()">Cancelar</button>
+                          }
+                        </div>
+                      }
+
+                      @if (erroPlano) {
+                        <div class="text-danger small mt-2">{{ erroPlano }}</div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" routerLink="/plantas/{{ plantaId }}/intervencao">
+          <i class="fa-solid fa-plus me-1"></i> Registrar intervenção
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ SEÇÃO COLAPSÁVEL: Recomendações da IA (RN-034/036 — UI_SPEC §4.2) ═══ -->
+  <div class="acordeao" [class.aberto]="secoesAbertas().recomendacoes">
+    <button type="button" class="acordion-cabecalho" (click)="alternarSecao('recomendacoes')" [attr.aria-expanded]="secoesAbertas().recomendacoes" aria-controls="secao-recomendacoes">
+      <i class="fa-solid fa-wand-magic-sparkles text-warning"></i>
+      <span>Recomendações da IA</span>
+      @if (recomendacoes.length) {
+        <span class="text-muted fw-normal small">{{ recomendacoes.length }} vigente{{ recomendacoes.length > 1 ? 's' : '' }}</span>
+      }
+      <i class="fa-solid fa-chevron-down acordeao-chevron"></i>
+    </button>
+
+    @if (secoesAbertas().recomendacoes) {
+      <div class="acordeao-corpo" id="secao-recomendacoes">
+        @if (isLoadingRecomendacoes) {
+          <div class="skeleton mb-2"></div>
+          <div class="skeleton skeleton-curto"></div>
+        } @else if (recomendacoesIndisponiveis) {
+          <!-- IA indisponível com retry (RN-036 — UI_SPEC §4.4) -->
+          <div class="alert alert-warning d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3 py-2 px-3 small mb-3">
+            <span>
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>
+              IA indisponível — seus dados estão salvos e os alertas padrão seguem ativos.
+            </span>
+            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3" (click)="carregarRecomendacoes()">
+              <i class="fa-solid fa-rotate-right me-1"></i> Tentar novamente
+            </button>
+          </div>
+        } @else if (recomendacoes.length === 0) {
+          <div class="empty-state">
+            <i class="fa-solid fa-wand-magic-sparkles empty-icone"></i>
+            <p class="empty-texto mb-0">Nenhuma recomendação proativa no momento</p>
+          </div>
+        } @else {
+          <!-- Cards de recomendações (contexto + data — RN-034) -->
+          <div class="row g-3 mb-3">
+            @for (rec of recomendacoes; track rec.id) {
+              <div class="col-12 col-md-6">
+                <div class="card border-0 shadow-sm rounded-3 h-100 recomendacao-card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                      <h6 class="fw-bold text-dark mb-0">{{ rec.titulo }}</h6>
+                      <span class="badge bg-light text-dark border rounded-pill small text-nowrap">{{ CONTEXTO_RECOMENDACAO_LABEL[rec.contexto] }}</span>
+                    </div>
+                    <p class="small text-secondary mb-2">{{ rec.mensagem }}</p>
+                    <div class="text-muted small"><i class="fa-regular fa-clock me-1"></i>{{ dataHora(rec.geradaEm) }}</div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <button type="button" class="btn btn-success rounded-pill px-4 fw-semibold" routerLink="/plantas/{{ plantaId }}/assistente">
+          <i class="fa-solid fa-robot me-1"></i> Consultar IA
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Ampliação de foto documental (RN-029 — miniaturas clicáveis) -->
+  @if (fotoAmpliada) {
+    <div class="foto-lightbox" (click)="fecharFoto()" role="dialog" aria-modal="true" aria-label="Foto ampliada">
+      <img [src]="fotoAmpliada" alt="Foto ampliada da avaliação" class="foto-lightbox-img" />
+      <button type="button" class="btn btn-light btn-sm rounded-pill px-3 mt-3" (click)="fecharFoto()">
+        <i class="fa-solid fa-xmark me-1"></i> Fechar
+      </button>
+    </div>
+  }
 
   <!-- Templates compartilhados das seções (conteúdo completo da gamificação) -->
   <ng-template #blocoTrilha>

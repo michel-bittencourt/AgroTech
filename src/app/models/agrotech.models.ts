@@ -198,6 +198,8 @@ export interface Planta {
   alertaAtivo?: import('./gamificacao.models').AlertaAtivoItem | null;
   // Ciclo de vida (API_CONTRACTS §3.1 — "Histórico" para plantas Arquivadas, RN-021)
   statusVida?: import('./gamificacao.models').StatusVida | null;
+  // Modo planta existente (API_CONTRACTS §7.1 — badge "Planta existente" no detalhe, RN-026)
+  origemDesconhecida?: boolean;
 }
 
 export interface CreatePlantaRequest {

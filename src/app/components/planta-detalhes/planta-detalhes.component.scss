@@ -477,3 +477,145 @@
     background-position: -200% 0;
   }
 }
+
+// ═══ Estado Físico, Intervenções e Plano de Recuperação, Recomendações IA (RN-028..036) ═══
+
+// Interpretação/estruturação da IA (borda esquerda âmbar)
+.interpreta-ia {
+  border-color: #d4a017 !important;
+  background-color: #fffdf5;
+  border-radius: 0 0.4rem 0.4rem 0;
+  color: #374151;
+}
+
+// Histórico de avaliações
+.avaliacao-resumo {
+  background-color: #f8faf8;
+}
+
+.foto-miniatura-botao {
+  display: inline-block;
+  line-height: 0;
+
+  .foto-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    border: 1px solid var(--neutral-300);
+    transition: transform 0.15s ease;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+}
+
+// Lightbox de ampliação de foto documental (RN-029)
+.foto-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+
+  .foto-lightbox-img {
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: 0.6rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// Timeline vertical de intervenções (UI_SPEC §4.2 — RN-030/031)
+.timeline-intervencoes {
+  .timeline-int-item {
+    position: relative;
+    padding: 0 0 1.1rem 2.4rem;
+    border-left: 2px solid var(--neutral-300);
+    margin-left: 1rem;
+
+    &:last-child {
+      padding-bottom: 0;
+      border-left-color: transparent;
+    }
+
+    &.selecionada {
+      border-left-color: var(--agrotech-green-primary);
+
+      .timeline-int-marcador {
+        background-color: var(--agrotech-green-primary);
+        color: #ffffff;
+        border-color: var(--agrotech-green-primary);
+      }
+    }
+  }
+
+  .timeline-int-marcador {
+    position: absolute;
+    left: -1.2rem;
+    top: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 2px solid var(--neutral-300);
+    color: var(--agrotech-green-primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+  }
+
+  .timeline-int-conteudo {
+    min-width: 0;
+  }
+
+  .timeline-int-titulo {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #212529;
+    text-decoration: none;
+
+    &:hover {
+      color: var(--agrotech-green-primary);
+      text-decoration: underline;
+    }
+  }
+}
+
+// Nota discreta de janela contando do registro (RN-032 — transplante retroativo)
+.nota-retroativa {
+  font-style: italic;
+}
+
+// Checklist do plano de recuperação (RN-033)
+.plano-painel {
+  background-color: #ffffff;
+
+  .etapa-linha {
+    cursor: pointer;
+    border-radius: 0.4rem;
+    padding: 0.25rem 0.4rem;
+
+    &:hover {
+      background-color: var(--agrotech-green-light);
+    }
+
+    &.concluida {
+      .small {
+        text-decoration: line-through;
+        color: var(--neutral-400);
+      }
+    }
+  }
+}
+
+// Cards de recomendações da IA (RN-034)
+.recomendacao-card {
+  border-left: 4px solid #5b21b6;
+}

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Especie, EspecieScraped, EspecieSugestao, Planta, CreatePlantaRequest, DiarioNotaItem, CriarDiarioNotaRequest, AnaliseSaudeIaResponse, DiarioBordoEtapaResponse, ScrapingProgresso, CultivoContexto, EventoCalendarioItem, ConquistaProgresso, PlantaFotoItem, NotificacaoItem, ClimaPlantaResponse } from '../models/agrotech.models';
@@ -14,6 +14,22 @@ import {
   TransicaoEstagioResponse,
   TransplanteResponse
 } from '../models/gamificacao.models';
+import {
+  AvaliacaoEstadoItem,
+  ConcluirEtapaResponse,
+  ConsultaAssistenteResponse,
+  ConsultarAssistenteRequest,
+  CriarPlanoRequest,
+  CreatePlantaExistenteRequest,
+  DispositivoItem,
+  IntervencaoItem,
+  PlantaExistenteResponse,
+  PlanoRecuperacaoItem,
+  RecomendacaoIaItem,
+  RegistrarAvaliacaoRequest,
+  RegistrarIntervencaoRequest,
+  SugestaoEtapasResponse
+} from '../models/recuperacao.models';
 
 @Injectable({
   providedIn: 'root'
@@ -262,5 +278,79 @@ export class AgroTechService {
   /** XP do Cultivador + conquistas de coleção do jardim (§6.1). */
   getGamificacaoJardim(): Observable<JardimGamificacaoResponse> {
     return this.http.get<JardimGamificacaoResponse>(`${this.apiUrl}/jardim/gamificacao`, { headers: this.defaultHeaders });
+  }
+
+  // ─── Plantas Existentes, Recuperação e Assistência IA (API_CONTRACTS §7) ─────
+
+  /** Cadastro de planta sem origem conhecida — jornada inicia no estágio atual (§7.1, RN-026/027). */
+  cadastrarPlantaExistente(request: CreatePlantaExistenteRequest): Observable<PlantaExistenteResponse> {
+    console.log(`[AgroTechService] 🪴 Cadastrando planta existente "${request.apelidoLote}" (estágio ${request.estagioAtual})`);
+    return this.http.post<PlantaExistenteResponse>(`${this.apiUrl}/plantas/existente`, request, { headers: this.defaultHeaders });
+  }
+
+  /** Registro de avaliação de estado físico (§7.2 — RN-028/029). 503 preserva dados brutos (RN-036). */
+  registrarAvaliacao(plantaId: string, request: RegistrarAvaliacaoRequest): Observable<HttpResponse<AvaliacaoEstadoItem>> {
+    console.log(`[AgroTechService] 🩺 Registrando estado físico da planta ID=${plantaId}`);
+    return this.http.post<AvaliacaoEstadoItem>(`${this.apiUrl}/plantas/${plantaId}/avaliacoes`, request, {
+      headers: this.defaultHeaders,
+      observe: 'response'
+    });
+  }
+
+  /** Histórico de avaliações de estado físico, mais recente primeiro (§7.3). */
+  getAvaliacoes(plantaId: string): Observable<AvaliacaoEstadoItem[]> {
+    return this.http.get<AvaliacaoEstadoItem[]>(`${this.apiUrl}/plantas/${plantaId}/avaliacoes`, { headers: this.defaultHeaders });
+  }
+
+  /** Registro de intervenção de manejo — corrente ou retroativa (§7.4 — RN-030/031/032). */
+  registrarIntervencao(plantaId: string, request: RegistrarIntervencaoRequest): Observable<IntervencaoItem> {
+    console.log(`[AgroTechService] 🛠️ Registrando intervenção ${request.tipo} da planta ID=${plantaId}`);
+    return this.http.post<IntervencaoItem>(`${this.apiUrl}/plantas/${plantaId}/intervencoes`, request, { headers: this.defaultHeaders });
+  }
+
+  /** Histórico de intervenções com resumo do plano vinculado (§7.5). */
+  getIntervencoes(plantaId: string): Observable<IntervencaoItem[]> {
+    return this.http.get<IntervencaoItem[]>(`${this.apiUrl}/plantas/${plantaId}/intervencoes`, { headers: this.defaultHeaders });
+  }
+
+  /** Sugestão de etapas do plano via IA, sem persistir (§7.6.1 — RN-033). 503 → criação manual. */
+  sugerirEtapasPlano(intervencaoId: string): Observable<SugestaoEtapasResponse> {
+    console.log(`[AgroTechService] ✨ Sugerindo etapas de plano para intervenção ID=${intervencaoId}`);
+    return this.http.post<SugestaoEtapasResponse>(`${this.apiUrl}/intervencoes/${intervencaoId}/plano/sugestao`, {}, { headers: this.defaultHeaders });
+  }
+
+  /** Cria e ativa o plano de recuperação com as etapas (§7.6.2 — RN-033). */
+  criarPlanoRecuperacao(intervencaoId: string, request: CriarPlanoRequest): Observable<PlanoRecuperacaoItem> {
+    console.log(`[AgroTechService] 📋 Criando plano de recuperação da intervenção ID=${intervencaoId}`);
+    return this.http.post<PlanoRecuperacaoItem>(`${this.apiUrl}/intervencoes/${intervencaoId}/plano`, request, { headers: this.defaultHeaders });
+  }
+
+  /** Conclusão de etapa do plano — idempotente (§7.6.3 — RN-033). */
+  concluirEtapaPlano(planoId: string, etapaId: string): Observable<ConcluirEtapaResponse> {
+    return this.http.patch<ConcluirEtapaResponse>(`${this.apiUrl}/planos/${planoId}/etapas/${etapaId}/concluir`, {}, { headers: this.defaultHeaders });
+  }
+
+  /** Plano da intervenção — 404 com corpo vazio = sem plano (§7.6.4). */
+  getPlanoDaIntervencao(intervencaoId: string): Observable<PlanoRecuperacaoItem> {
+    return this.http.get<PlanoRecuperacaoItem>(`${this.apiUrl}/intervencoes/${intervencaoId}/plano`, { headers: this.defaultHeaders });
+  }
+
+  /** Consulta ao assistente IA da planta (§7.7.1 — RN-035). */
+  consultarAssistente(plantaId: string, request: ConsultarAssistenteRequest): Observable<ConsultaAssistenteResponse> {
+    console.log(`[AgroTechService] 💬 Consultando assistente IA da planta ID=${plantaId}`);
+    return this.http.post<ConsultaAssistenteResponse>(`${this.apiUrl}/plantas/${plantaId}/assistente/consultar`, request, { headers: this.defaultHeaders });
+  }
+
+  /** Recomendações proativas vigentes da planta (§7.7.2 — RN-034). */
+  getRecomendacoesIa(plantaId: string): Observable<RecomendacaoIaItem[]> {
+    return this.http.get<RecomendacaoIaItem[]>(`${this.apiUrl}/plantas/${plantaId}/assistente/recomendacoes`, { headers: this.defaultHeaders });
+  }
+
+  /**
+   * Dispositivos IoT ativos para o vínculo opcional do cadastro (UI_SPEC §5.3).
+   * TODO: endpoint ainda não definido no API_CONTRACTS.md — sinalizado como pendência.
+   */
+  getDispositivosAtivos(): Observable<DispositivoItem[]> {
+    return this.http.get<DispositivoItem[]>(`${this.apiUrl}/dispositivos`, { headers: this.defaultHeaders });
   }
 }

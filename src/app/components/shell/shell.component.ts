@@ -31,6 +31,10 @@ const CHAVE_SIDEBAR_GRUPOS = 'agrotech-sidebar-grupos';
 /** Mapeia a URL atual para o título exibido na topbar do shell. */
 function tituloPorRota(url: string): string {
   if (url === '/plantas/nova') return 'Nova Planta';
+  if (url === '/plantas/existente') return 'Cadastrar Planta Existente';
+  if (/^\/plantas\/[^/]+\/avaliacao/.test(url)) return 'Registrar Estado Físico';
+  if (/^\/plantas\/[^/]+\/intervencao/.test(url)) return 'Registrar Intervenção';
+  if (/^\/plantas\/[^/]+\/assistente/.test(url)) return 'Assistente IA';
   if (url === '/conquistas') return 'Conquistas';
   if (/^\/plantas\/[^/]+\/etapa/.test(url)) return 'Etapa do Cultivo';
   if (/^\/plantas\/[^/]+/.test(url)) return 'Detalhe da Planta';
@@ -63,6 +67,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       itens: [
         { rotulo: 'Visão geral', rota: '/plantas' },
         { rotulo: 'Nova planta', rota: '/plantas/nova' },
+        { rotulo: 'Cadastrar planta existente', rota: '/plantas/existente' },
         { rotulo: 'Conquistas', rota: '/conquistas' }
       ]
     },

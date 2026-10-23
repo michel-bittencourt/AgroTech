@@ -1,0 +1,84 @@
+<div class="container pb-5">
+  <div class="page-header">
+    <div>
+      <h1 class="page-titulo"><i class="fa-solid fa-shovel text-agrotech-primary"></i> Registrar intervenção</h1>
+      <p class="page-subtitulo">
+        @if (apelidoPlanta) {
+          {{ apelidoPlanta }} — manejo corrente ou retroativo (data real ou aproximada)
+        } @else {
+          Manejo corrente ou retroativo (data real ou aproximada)
+        }
+      </p>
+    </div>
+    <div class="page-acoes">
+      <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium" routerLink="/plantas">
+        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+      </button>
+    </div>
+  </div>
+
+  @if (erroGeral()) {
+    <div class="alert alert-danger rounded-3 py-2 px-3 small" role="alert">
+      <i class="fa-solid fa-triangle-exclamation me-1"></i> {{ erroGeral() }}
+    </div>
+  }
+
+  <div class="section-card">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-secondary" for="tipo">Tipo de intervenção *</label>
+        <select id="tipo" class="form-select rounded-3" [(ngModel)]="tipo" name="tipo">
+          @for (t of ORDEM_TIPOS_INTERVENCAO; track t) {
+            <option [value]="t">{{ TIPO_INTERVENCAO_VISUAL[t].label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-secondary" for="dataEvento">Data do evento *</label>
+        <input id="dataEvento" type="date" class="form-control rounded-3" [(ngModel)]="dataEvento"
+               name="dataEvento" [max]="hojeIso" />
+      </div>
+
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="dataAproximada" [(ngModel)]="dataAproximada" name="dataAproximada" />
+          <label class="form-check-label small text-secondary" for="dataAproximada">
+            Não sei a data exata (marca como data aproximada)
+          </label>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label small fw-bold text-secondary" for="detalhesLivres">Detalhes — materiais e técnicas (opcional)</label>
+        <textarea id="detalhesLivres" class="form-control rounded-3" rows="4" [(ngModel)]="detalhesLivres" name="detalhesLivres"
+                  placeholder="Ex.: poda dos galhos até 1 m; canela nos cortes e raízes; drenagem com garrafa PET, cacos cerâmicos e tecido de poliéster"></textarea>
+        <div class="form-text text-muted small">O texto livre é estruturado pela IA quando disponível — o registro nunca é bloqueado.</div>
+      </div>
+
+      @if (tipo === 'Transplante') {
+        <div class="col-12">
+          <div class="alert alert-info py-2 px-3 rounded-3 small mb-0">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Transplante registrado inicia a janela de verificação de 7 dias dos selos "Transplante bem-sucedido",
+            contando da data do registro no sistema — mesmo em registro retroativo.
+          </div>
+        </div>
+      }
+
+      @if (erroCampo()) {
+        <div class="col-12">
+          <div class="text-danger small">{{ erroCampo() }}</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mb-4 mobile-stack-actions">
+    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" routerLink="/plantas">Cancelar</button>
+    <button type="button" class="btn btn-success px-4 rounded-pill shadow-sm fw-semibold" (click)="salvar()" [disabled]="salvando()">
+      <i class="fa-solid" [ngClass]="salvando() ? 'fa-spinner fa-spin me-1' : 'fa-floppy-disk me-1'"></i>
+      {{ salvando() ? 'Salvando...' : 'Salvar' }}
+    </button>
+  </div>
+</div>
